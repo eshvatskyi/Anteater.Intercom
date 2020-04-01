@@ -1,0 +1,6 @@
+<UserControl x:Class="Anteater.Intercom.Gui.Views.AlarmRinger"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="{Binding Path=IsActive, Converter={StaticResource BoolToVisibility}}">
+    <Image Source="pack://application:,,,/Assets/BellRingOn.png" />
+</UserControl>

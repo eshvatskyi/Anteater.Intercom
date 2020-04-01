@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Platforms>x64;x86</Platforms>
+    <Authors>smithkl42</Authors>
+    <RepositoryUrl>https://github.com/smithkl42/AlantaMedia</RepositoryUrl>    
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="DSP\Speex\**" />
+    <EmbeddedResource Remove="DSP\Speex\**" />
+    <None Remove="DSP\Speex\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="DSP\ResampleFilterTiming.cs" />
+  </ItemGroup>
+
+</Project>

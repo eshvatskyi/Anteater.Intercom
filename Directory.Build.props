@@ -1,0 +1,22 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
+    <RepositoryRootDirectory>$(MSBuildThisFileDirectory)</RepositoryRootDirectory>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Anteater</Authors>
+    <Copyright>© Anteater. All rights reserved.</Copyright>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <!--PropertyGroup Label="ConfigurationNoWarn">
+    <NoWarn>SA0001;SA1005;SA1101;SA1116;SA1116;SA1117;SA1118;SA1124;SA1201;SA1202;SA1309;SA1402;SA1413;SA1512;SA1515;SA1600;SA1601;SA1602;SA1633;SA1649;</NoWarn>
+  </PropertyGroup-->
+
+</Project>

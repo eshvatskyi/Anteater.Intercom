@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Platforms>x64;x86</Platforms>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Anteater.Intercom</RootNamespace>
+    <AssemblyName>AnteaterIntercom</AssemblyName>
+    <ApplicationIcon>Assets\Icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="1.10.0" />
+    <PackageReference Include="System.Reactive.Linq" Version="4.3.2" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.19" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Alanta.Client.Media\Alanta.Client.Media.csproj" />
+    <ProjectReference Include="..\RtspClientSharp.Decoding\RtspClientSharp.Decoding.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Gui\Views\Intercom.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\BellRingOff.png" />
+    <Resource Include="Assets\BellRingOn.png" />
+    <Resource Include="Assets\CallEnd.png" />
+    <Resource Include="Assets\CallStart.png" />
+    <Resource Include="Assets\DoorBell.mp3" />
+    <Resource Include="Assets\DoorLock.png" />
+    <Resource Include="Assets\DoorUnlock.png" />
+    <Resource Include="Assets\Icon.ico" />
+    <Resource Include="Assets\VolumeMute.png" />
+    <Resource Include="Assets\VolumeUp.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <SplashScreen Include="Assets\SplashScreen.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="Gui\Views\Intercom.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+</Project>
