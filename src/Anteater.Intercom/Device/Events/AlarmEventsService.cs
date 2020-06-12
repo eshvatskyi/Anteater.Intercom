@@ -7,6 +7,7 @@ using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.Threading;
 
 namespace Anteater.Intercom.Device.Events
 {
@@ -42,15 +43,7 @@ namespace Anteater.Intercom.Device.Events
 
                         while (!cancellationToken.IsCancellationRequested)
                         {
-                            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-
-                            var tcs = new TaskCompletionSource<string>();
-
-                            cts.Token.Register(() => tcs.TrySetException(new TimeoutException("Failer to read event source.")));
-
-                            _ = reader.ReadLineAsync().ContinueWith(x => tcs.TrySetResult(x.Result));
-
-                            var line = await tcs.Task.ConfigureAwait(false);
+                            var line = await reader.ReadLineAsync().WithTimeout(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
 
                             if (AlarmEvent.TryParse(line, out var alarmEvent))
                             {

@@ -1,3 +1,5 @@
+using Anteater.Intercom.Properties;
+
 namespace Anteater.Intercom.Device
 {
     public class ConnectionSettings
