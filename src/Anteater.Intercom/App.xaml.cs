@@ -3,7 +3,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using Anteater.Intercom.Device.Events;
-using Anteater.Intercom.Device.Rtsp;
+//using Anteater.Intercom.Device.Rtsp;
 using Anteater.Intercom.Gui.Views;
 
 namespace Anteater.Intercom
@@ -21,12 +21,12 @@ namespace Anteater.Intercom
         public App()
         {
             AlarmEvents = new AlarmEventsService();
-            Rtsp = new RtspDataService();
+            //Rtsp = new RtspDataService();
         }
 
         public AlarmEventsService AlarmEvents { get; }
 
-        public RtspDataService Rtsp { get; }
+        //public RtspDataService Rtsp { get; }
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -51,7 +51,7 @@ namespace Anteater.Intercom
                 }.Start();
 
                 AlarmEvents.Start();
-                Rtsp.Start();
+                //Rtsp.Start();
 
                 return;
             }
@@ -64,7 +64,7 @@ namespace Anteater.Intercom
         protected override void OnExit(ExitEventArgs e)
         {
             AlarmEvents.Stop();
-            Rtsp.Stop();
+            //Rtsp.Stop();
 
             base.OnExit(e);
         }

@@ -26,7 +26,13 @@ namespace Anteater.Intercom.Gui
         {
             try
             {
+                if (parameter == null)
+                {
+                    return false;
+                }
+
                 var val = (T)parameter;
+
                 return _canExecute == null ? true : _canExecute(val);
             }
             catch

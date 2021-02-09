@@ -1,36 +1,31 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0-windows10.0.19041</TargetFramework>
     <Platforms>x64;x86</Platforms>
     <UseWPF>true</UseWPF>
+    <!--<GenerateAssemblyInfo>false</GenerateAssemblyInfo>-->
     <RootNamespace>Anteater.Intercom</RootNamespace>
     <AssemblyName>AnteaterIntercom</AssemblyName>
     <ApplicationIcon>Assets\Icon.ico</ApplicationIcon>
+    <StartupObject>Anteater.Intercom.App</StartupObject>
+    <!--<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>-->
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <NoWarn>CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="16.6.13" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.19" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.4.9" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="16.8.55" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.31" />
     <PackageReference Include="NAudio" Version="1.10.0" />
-    <PackageReference Include="System.Reactive.Linq" Version="4.4.1" />    
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.12" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Alanta.Client.Media\Alanta.Client.Media.csproj" />
-    <ProjectReference Include="..\RtspClientSharp.Decoding\RtspClientSharp.Decoding.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Gui\Views\Intercom.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="Properties\Settings.Designer.cs">
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-    </Compile>
   </ItemGroup>
 
   <ItemGroup>
@@ -51,16 +46,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Properties\Settings.settings">
+    <Content Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Page Update="Gui\Views\Intercom.xaml">
-      <SubType>Designer</SubType>
-    </Page>
+    </Content>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
   </ItemGroup>
 
 </Project>

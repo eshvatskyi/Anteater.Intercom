@@ -8,7 +8,7 @@ namespace Anteater.Intercom.Device
 
         static ConnectionSettings()
         {
-            Default = new ConnectionSettings(Settings.Default.Host, Settings.Default.Username, Settings.Default.Password);
+            Default = new ConnectionSettings(Settings.Default.Host, Settings.Default.Username, Settings.Default.Password);            
         }
 
         private ConnectionSettings(string host, string username = null, string password = null, int webPort = 80, int rtspPort = 554, int dataPort = 5000)

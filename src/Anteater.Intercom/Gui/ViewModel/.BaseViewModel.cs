@@ -25,6 +25,11 @@ namespace Anteater.Intercom.Gui.ViewModel
             return false;
         }
 
+        protected void RaisePropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
         protected virtual void Dispose(bool disposing) { }
 
         public void Dispose()

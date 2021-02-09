@@ -10,26 +10,19 @@ namespace Anteater.Intercom.Gui.Views
         {
             var app = Application.Current as App;
 
-            if (app != null)
-            {
-                ViewModel = new MainWindowViewModel(app.AlarmEvents);
-            }
-
-            DataContext = ViewModel;
+            DataContext = app != null ? new MainWindowViewModel(app.AlarmEvents) : null;
 
             InitializeComponent();
 
-            Dispatcher.ShutdownStarted += (s, e) => ViewModel?.Dispose();
+            Dispatcher.ShutdownStarted += (s, e) => (DataContext as MainWindowViewModel)?.Dispose();
         }
-
-        public MainWindowViewModel ViewModel { get; }
 
         public void BringToForeground()
         {
             Show();
             Activate();
             Focus();
-            ViewModel.IsMaximized = true;
+            (DataContext as MainWindowViewModel).IsMaximized = true;
         }
     }
 }

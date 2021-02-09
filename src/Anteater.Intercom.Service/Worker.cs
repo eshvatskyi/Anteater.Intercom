@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Reactive.Disposables;
+using System.Linq;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
+using Confluent.Kafka;
+using Confluent.Kafka.Admin;
+using Microsoft.Extensions.Hosting;
 using RtspClientSharp;
 using RtspClientSharp.Decoding;
 using RtspClientSharp.Decoding.DecodedFrames;
@@ -13,81 +15,46 @@ using RtspClientSharp.RawFrames;
 using RtspClientSharp.RawFrames.Audio;
 using RtspClientSharp.RawFrames.Video;
 
-namespace Anteater.Intercom.Device.Rtsp
+namespace Anteater.Intercom.Service
 {
-    public class RtspDataService : BackgroundService
+    public class Worker : BackgroundService
     {
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
 
         private readonly Dictionary<FFmpegAudioCodecId, FFmpegAudioDecoder> _audioDecodersMap = new Dictionary<FFmpegAudioCodecId, FFmpegAudioDecoder>();
         private readonly Dictionary<FFmpegVideoCodecId, FFmpegVideoDecoder> _videoDecodersMap = new Dictionary<FFmpegVideoCodecId, FFmpegVideoDecoder>();
 
-        private readonly Subject<IDecodedAudioFrame> _audioFrames = new Subject<IDecodedAudioFrame>();
-        private readonly Subject<IDecodedVideoFrame> _videoFrames = new Subject<IDecodedVideoFrame>();
-
-        private IObservable<IDecodedAudioFrame> _audioSource;
-        private IObservable<IDecodedVideoFrame> _videoSource;
-
-        private IDisposable _audioSubscription;
-        private IDisposable _videoSubscription;
-
-        public IObservable<IDecodedAudioFrame> AsAudioObservable() => _audioFrames.AsObservable();
-
-        public IObservable<IDecodedVideoFrame> AsVideoObservable() => _videoFrames.AsObservable();
-
-        public void SetAudioState(bool stopped)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            _audioSubscription?.Dispose();
-            _audioSubscription = null;
+            await InitializeKafka().ConfigureAwait(false);
 
-            if (!stopped)
+            var config = new ProducerConfig
             {
-                _audioSubscription = _audioSource?.Subscribe(_audioFrames.OnNext) ?? Disposable.Empty;
-            }
-        }
+                BootstrapServers = "10.0.1.15:9092"
+            };
 
-        public void SetVideoState(bool stopped)
-        {
-            _videoSubscription?.Dispose();
-            _videoSubscription = null;
-
-            if (!stopped)
-            {
-                _videoSubscription = _videoSource?.Subscribe(_videoFrames.OnNext) ?? Disposable.Empty;
-            }
-        }
-
-        protected override async Task RunAsync(CancellationToken cancellationToken)
-        {
-            SetAudioState(false);
-            SetVideoState(false);
+            using var audioProducer = new ProducerBuilder<Null, byte[]>(config).Build();
+            using var videoProducer = new ProducerBuilder<Null, IDecodedVideoFrame>(config).Build();
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    var endpoint = new Uri($"rtsp://{ConnectionSettings.Default.Username}:{ConnectionSettings.Default.Password}@{ConnectionSettings.Default.Host}:554/av0_0");
-
-                    var connectionParameters = new ConnectionParameters(endpoint)
+                    using var client = new RtspClient(new ConnectionParameters(new Uri($"rtsp://admin:Ababbagalamaga5@10.0.1.2:554/av0_0"))
                     {
                         RtpTransport = RtpTransportProtocol.TCP,
                         CancelTimeout = TimeSpan.FromSeconds(1)
-                    };
+                    });
 
-                    using var client = new RtspClient(connectionParameters);
-
-                    _audioSource = GetAudioDecodingObservable(client);
-                    _videoSource = GetVideoDecodingObservable(client);
-
-                    if (_audioSubscription != null)
+                    using var audioSubscribtion = GetAudioDecodingObservable(client).Subscribe(async x =>
                     {
-                        SetAudioState(false);
-                    }
+                        await audioProducer.ProduceAsync("anteater.audio", new Message<Null, byte[]>() { Value = x.DecodedBytes.Array ?? Array.Empty<byte>() }).ConfigureAwait(false);
+                    });
 
-                    if (_videoSubscription != null)
+                    using var videoSubscribtion = GetVideoDecodingObservable(client).Subscribe(async x =>
                     {
-                        SetVideoState(false);
-                    }
+                        await videoProducer.ProduceAsync("anteater.video", new Message<Null, IDecodedVideoFrame>() { Value = x }).ConfigureAwait(false);
+                    });
 
                     await client.ConnectAsync(cancellationToken).ConfigureAwait(false);
 
@@ -99,12 +66,76 @@ namespace Anteater.Intercom.Device.Rtsp
                 }
                 catch
                 {
-                    await Task.Delay(RetryDelay, cancellationToken);
+                    await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
                 }
             }
+        }
 
-            SetAudioState(true);
-            SetVideoState(true);
+        async ValueTask InitializeKafka()
+        {
+            var config = new AdminClientConfig
+            {
+                BootstrapServers = "10.0.1.15:9092"
+            };
+
+            using var client = new AdminClientBuilder(config).Build();
+
+            var metadata = client.GetMetadata(TimeSpan.FromSeconds(20));
+
+            var topicsToCreate = new List<TopicSpecification>();
+
+            if (!metadata.Topics.Any(x => x.Topic == "anteater.video"))
+            {
+                topicsToCreate.Add(new TopicSpecification
+                {
+                    Name = "anteater.video",
+                    ReplicationFactor = 1,
+                    NumPartitions = 1,
+                    Configs = new Dictionary<string, string>
+                    {
+                        ["cleanup.policy"] = "delete",
+                        ["compression.type"] = "uncompressed",
+                        ["retention.ms"] = "500"
+                    }
+                });
+            }
+
+            if (!metadata.Topics.Any(x => x.Topic == "anteater.audio"))
+            {
+                topicsToCreate.Add(new TopicSpecification
+                {
+                    Name = "anteater.audio",
+                    ReplicationFactor = 1,
+                    NumPartitions = 1,
+                    Configs = new Dictionary<string, string>
+                    {
+                        ["cleanup.policy"] = "delete",
+                        ["compression.type"] = "uncompressed",
+                        ["retention.ms"] = "500"
+                    }
+                });
+            }
+
+            if (!metadata.Topics.Any(x => x.Topic == "anteater.event"))
+            {
+                topicsToCreate.Add(new TopicSpecification
+                {
+                    Name = "anteater.event",
+                    ReplicationFactor = 1,
+                    NumPartitions = 1,
+                    Configs = new Dictionary<string, string>
+                    {
+                        ["cleanup.policy"] = "delete",
+                        ["compression.type"] = "uncompressed",
+                        ["retention.ms"] = "500"
+                    }
+                });
+            }
+
+            if (topicsToCreate.Any())
+            {
+                await client.CreateTopicsAsync(topicsToCreate).ConfigureAwait(false);
+            }
         }
 
         IObservable<IDecodedAudioFrame> GetAudioDecodingObservable(RtspClient client) => Observable

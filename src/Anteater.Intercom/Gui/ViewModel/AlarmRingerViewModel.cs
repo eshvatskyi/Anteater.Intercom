@@ -15,6 +15,8 @@ namespace Anteater.Intercom.Gui.ViewModel
         private bool _isActive;
         private bool _isSoundMuted;
 
+        public AlarmRingerViewModel() { }
+
         public AlarmRingerViewModel(AlarmEventsService alarmEvents)
         {
             _wavePlayer = new WaveOut();
@@ -28,7 +30,7 @@ namespace Anteater.Intercom.Gui.ViewModel
             ChangeMutedStateCommand = new RelayCommand(ChangeMuteState);
 
             alarmEvents.AsObservable()
-                .Where(x => x.Type == AlarmEvent.EventType.SensorAlarm && x.Status)                
+                .Where(x => x.Type == AlarmEvent.EventType.SensorAlarm && x.Status)
                 .Select(x => true)
                 .ObserveOnDispatcher(DispatcherPriority.Send)
                 .Subscribe(ChangeActiveState);
@@ -67,7 +69,8 @@ namespace Anteater.Intercom.Gui.ViewModel
                     .Select(_ => false)
                     .Subscribe(ChangeActiveState);
 
-            } else
+            }
+            else
             {
                 IsActive = false;
                 _wavePlayer.Stop();

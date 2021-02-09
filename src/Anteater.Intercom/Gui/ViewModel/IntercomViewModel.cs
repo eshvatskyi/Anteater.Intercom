@@ -8,26 +8,27 @@ using Alanta.Client.Media;
 using Alanta.Client.Media.Dsp.WebRtc;
 using Anteater.Intercom.Device.Audio;
 using Anteater.Intercom.Device.Events;
-using Anteater.Intercom.Device.Rtsp;
+using LibVLCSharp.Shared;
 using NAudio.Wave;
 
 namespace Anteater.Intercom.Gui.ViewModel
 {
     public class IntercomViewModel : BaseViewModel
     {
-        private readonly RtspDataService _rtsp;
         private readonly BackChannelConnection _backChannelConnection;
+        private readonly MediaPlayer _mediaPlayer;
 
         private bool _isDoorLocked;
         private bool _isActive;
 
         private IDisposable _activeCall;
 
-        public IntercomViewModel(RtspDataService rtsp, AlarmEventsService alarmEvents)
-        {
-            _rtsp = rtsp ?? throw new ArgumentNullException(nameof(rtsp));
+        public IntercomViewModel() { }
 
+        public IntercomViewModel(AlarmEventsService alarmEvents, MediaPlayer mediaPlayer)
+        {
             _backChannelConnection = new BackChannelConnection(alarmEvents);
+            _mediaPlayer = mediaPlayer;
 
             IsDoorLocked = true;
             IsActive = false;
@@ -87,16 +88,24 @@ namespace Anteater.Intercom.Gui.ViewModel
                     _backChannelConnection.Connect();
                 }
 
+                var muteState = _mediaPlayer.Mute;
+
+                _mediaPlayer.Mute = false;
+
+                var echoCanceller = new WebRtcFilter(240, 100, new AudioFormat(), new AudioFormat(), true, true, true);
+
+                var capture = new WasapiLoopbackCapture();
+
                 var waveIn = new WaveInEvent
                 {
                     WaveFormat = new WaveFormat(8000, 1),
                     BufferMilliseconds = 20
                 };
 
-                var echoCanceller = new WebRtcFilter(240, 100, new AudioFormat(), new AudioFormat(), true, true, true);
-
-                var audioSubscription = _rtsp.AsAudioObservable()
-                    .Subscribe(frame => echoCanceller.RegisterFramePlayed(frame.DecodedBytes.ToArray()));
+                capture.DataAvailable += (s, a) =>
+                {
+                     echoCanceller.RegisterFramePlayed(a.Buffer);
+                };
 
                 var subscription = Observable
                     .FromEventPattern<WaveInEventArgs>(h => waveIn.DataAvailable += h, h => waveIn.DataAvailable -= h)
@@ -122,25 +131,26 @@ namespace Anteater.Intercom.Gui.ViewModel
                         }
                     });
 
-                waveIn.StartRecording();
+                capture.StartRecording();
 
-                _rtsp.SetAudioState(false);
+                waveIn.StartRecording();
 
                 _activeCall = Disposable.Create(() =>
                 {
                     IsActive = false;
-
-                    _rtsp.SetAudioState(true);
 
                     if (disconnect)
                     {
                         _backChannelConnection.Disconnect();
                     }
 
-                    audioSubscription.Dispose();
                     subscription.Dispose();
+                    capture.StopRecording();
+                    capture.Dispose();
                     waveIn.StopRecording();
                     waveIn.Dispose();
+
+                    _mediaPlayer.Mute = muteState;
                 });
             }
             else
