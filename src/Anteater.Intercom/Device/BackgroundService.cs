@@ -16,14 +16,14 @@ namespace Anteater.Intercom.Device
 
         public void Start()
         {
-            _runningTask = Task.Factory.StartNew(async () => await RunAsync(_cts.Token).ConfigureAwait(false)).Unwrap();
+            _runningTask = RunAsync(_cts.Token);
         }
 
-        public void Stop()
+        public async Task StopAsync()
         {
             _cts.Cancel();
 
-            _runningTask.GetAwaiter().GetResult();
+            await _runningTask;
         }
 
         protected abstract Task RunAsync(CancellationToken cancellationToken);

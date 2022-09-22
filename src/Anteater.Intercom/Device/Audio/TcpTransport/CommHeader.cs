@@ -1,7 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Anteater.Intercom.Device.Audio.TcpTransport
@@ -40,11 +38,11 @@ namespace Anteater.Intercom.Device.Audio.TcpTransport
             return stream.ToArray();
         }
 
-        public static CommHeader Read(Stream stream)
+        public static async Task<CommHeader> ReadAsync(Stream stream)
         {
             var buffer = new byte[HeaderLength];
 
-            stream.Read(buffer);
+            await stream.ReadAsync(buffer);
 
             return new CommHeader
             {

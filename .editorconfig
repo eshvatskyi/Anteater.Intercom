@@ -8,26 +8,21 @@ root = true
 [*]
 charset = utf-8
 indent_style = space
+indent_size = 2
+tab_width = 2
+end_of_line = crlf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-# Visual Studio XML Project Files
-[*.{csproj}]
-indent_size = 2
-
-# Various XML Configuration Files
-[*.{xml,config,props,targets,nuspec,yml}]
-indent_size = 2
-
 # Code files
-[*.{cs,csx}]
+[*.{cs,xaml}]
+tab_width = 4
 indent_size = 4
 
 ###############################
 # .NET Coding Conventions     #
 ###############################
 
-[*.{cs,vb}]
 # Organize usings
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = false
@@ -49,7 +44,7 @@ dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:suggesti
 dotnet_style_parentheses_in_other_operators = never_if_unnecessary:suggestion
 
 # Modifier preferences
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:none
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:silent
 dotnet_style_readonly_field = true:suggestion
 
 # Expression-level preferences
@@ -70,60 +65,53 @@ dotnet_style_prefer_conditional_expression_over_return = true:silent
 ###############################
 
 # Style Definitions
-dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+dotnet_naming_style.static_field_style.capitalization = pascal_case
+dotnet_naming_style.static_field_style.required_prefix = 
 
-dotnet_naming_style.prefix_private_field_with_underscore_style.capitalization = camel_case
-dotnet_naming_style.prefix_private_field_with_underscore_style.required_prefix = _
+dotnet_naming_style.private_field_style.capitalization = camel_case
+dotnet_naming_style.private_field_style.required_prefix = _
 
-dotnet_naming_style.prefix_interface_with_i_style.capitalization = pascal_case
-dotnet_naming_style.prefix_interface_with_i_style.required_prefix = I
+dotnet_naming_style.interface_style.capitalization = pascal_case
+dotnet_naming_style.interface_style.required_prefix = I
 
-dotnet_naming_style.prefix_type_parameters_with_t_style.capitalization = pascal_case
-dotnet_naming_style.prefix_type_parameters_with_t_style.required_prefix = T
+dotnet_naming_style.type_parameters_style.capitalization = pascal_case
+dotnet_naming_style.type_parameters_style.required_prefix = T
 
 # Use PascalCase for constant fields
-dotnet_naming_symbols.constant_field_group.applicable_kinds = field
-dotnet_naming_symbols.constant_field_group.applicable_accessibilities = *
-dotnet_naming_symbols.constant_field_group.required_modifiers = const
-dotnet_naming_rule.constant_field_rule.symbols = constant_field_group
-dotnet_naming_rule.constant_field_rule.style = pascal_case_style
-dotnet_naming_rule.constant_field_rule.severity = warning
-
-# Use PascalCase for static fields
-dotnet_naming_symbols.static_field_group.applicable_kinds = field
-dotnet_naming_symbols.static_field_group.applicable_accessibilities = *
-dotnet_naming_symbols.static_field_group.required_modifiers = static
-dotnet_naming_rule.static_field_rule.symbols = static_field_group
-dotnet_naming_rule.static_field_rule.style = pascal_case_style
 dotnet_naming_rule.static_field_rule.severity = warning
+dotnet_naming_rule.static_field_rule.style = static_field_style
+dotnet_naming_rule.static_field_rule.symbols = static_field_group
+
+dotnet_naming_symbols.static_field_group.applicable_kinds = field, property
+dotnet_naming_symbols.static_field_group.required_modifiers = static
+dotnet_naming_symbols.static_field_group.applicable_accessibilities = *
 
 # Use "_" for private fields
-dotnet_naming_symbols.private_field_group.applicable_kinds = field
-dotnet_naming_symbols.private_field_group.applicable_accessibilities = private
-dotnet_naming_rule.private_fields_must_be_prefixed.symbols = private_field_group
-dotnet_naming_rule.private_field_rule.style = prefix_private_field_with_underscore_style
 dotnet_naming_rule.private_field_rule.severity = warning
+dotnet_naming_rule.private_field_rule.style = private_field_style
+dotnet_naming_rule.private_field_rule.symbols = private_field_group
+
+dotnet_naming_symbols.private_field_group.applicable_kinds  = field
+dotnet_naming_symbols.private_field_group.applicable_accessibilities = private, protected
 
 # Interfaces use PascalCase and are prefixed with uppercase 'I'
+dotnet_naming_rule.interface_rule.severity = warning
+dotnet_naming_rule.interface_rule.style = interface_style
+dotnet_naming_rule.interface_rule.symbols = interface_group
+
 dotnet_naming_symbols.interface_group.applicable_kinds = interface
-dotnet_naming_rule.interface_rule.symbols              = interface_group
-dotnet_naming_rule.interface_rule.style                = prefix_interface_with_i_style
-dotnet_naming_rule.interface_rule.severity             = warning
 
 # Generics Type Parameters use PascalCase and are prefixed with uppercase 'T'
+dotnet_naming_rule.type_parameter_rule.severity = warning
+dotnet_naming_rule.type_parameter_rule.style = type_parameters_style
+dotnet_naming_rule.type_parameter_rule.symbols = type_parameter_group
+
 dotnet_naming_symbols.type_parameter_group.applicable_kinds = type_parameter
-dotnet_naming_rule.type_parameter_rule.symbols              = type_parameter_group
-dotnet_naming_rule.type_parameter_rule.style                = prefix_type_parameters_with_t_style
-dotnet_naming_rule.type_parameter_rule.severity             = warning
 
 ###############################
 # C# Code Style Rules         #
 ###############################
 
-# 'using' directive preferences
-# csharp_using_directive_placement = inside_namespace:warning
-
-[*.cs]
 # var preferences
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
