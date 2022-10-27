@@ -1,12 +1,11 @@
 using Microsoft.UI.Xaml.Controls;
 
-namespace Anteater.Intercom.Gui.Pages
+namespace Anteater.Intercom.Gui.Pages;
+
+sealed partial class Blank : Page
 {
-    sealed partial class Blank : Page
+    public Blank()
     {
-        public Blank()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

@@ -5,40 +5,44 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace Anteater.Intercom.Gui.Controls
+namespace Anteater.Intercom.Gui.Controls;
+
+public partial class AlarmMuteButton : Button
 {
-    public partial class AlarmMuteButton : Button
+    public static readonly DependencyProperty IsSoundMutedProperty = DependencyProperty
+        .Register(nameof(IsSoundMuted), typeof(bool), typeof(AlarmMuteButton), PropertyMetadata
+        .Create(false));
+
+    private readonly IEventPublisher _pipe;
+
+    public AlarmMuteButton()
     {
-        public static readonly DependencyProperty IsSoundMutedProperty = DependencyProperty
-            .Register(nameof(IsSoundMuted), typeof(bool), typeof(AlarmMuteButton), PropertyMetadata
-            .Create(false));
+        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
 
-        private readonly IEventPublisher _pipe;
+        Loaded += OnLoaded;
 
-        public AlarmMuteButton()
-        {
-            _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+        InitializeComponent();
+    }
 
-            InitializeComponent();
+    public bool IsSoundMuted
+    {
+        get => Convert.ToBoolean(GetValue(IsSoundMutedProperty));
+        set => SetValue(IsSoundMutedProperty, value);
+    }
 
-            IsSoundMuted = false;
+    void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        IsSoundMuted = false;
 
-            _pipe.Publish(new AlarmStateChanged(IsSoundMuted));
-        }
+        _pipe.Publish(new AlarmStateChanged(IsSoundMuted));
+    }
 
-        public bool IsSoundMuted
-        {
-            get => Convert.ToBoolean(GetValue(IsSoundMutedProperty));
-            set => SetValue(IsSoundMutedProperty, value);
-        }
+    protected override void OnTapped(TappedRoutedEventArgs e)
+    {
+        e.Handled = false;
 
-        protected override void OnTapped(TappedRoutedEventArgs e)
-        {
-            e.Handled = false;
+        IsSoundMuted = !IsSoundMuted;
 
-            IsSoundMuted = !IsSoundMuted;
-
-            _pipe.Publish(new AlarmStateChanged(IsSoundMuted));
-        }
+        _pipe.Publish(new AlarmStateChanged(IsSoundMuted));
     }
 }

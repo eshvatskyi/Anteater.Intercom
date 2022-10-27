@@ -1,156 +1,177 @@
 using System;
-using System.IO;
-using System.IO.MemoryMappedFiles;
-using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Security.Policy;
 using System.Threading.Tasks;
 using Anteater.Intercom.Device;
+using Anteater.Intercom.Device.Rtsp;
 using Anteater.Pipe;
-using LibVLCSharp.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
+using NAudio.Wave;
 
-namespace Anteater.Intercom.Gui.Controls
+namespace Anteater.Intercom.Gui.Controls;
+
+public partial class VideoPlayer : Grid
 {
-    public partial class VideoPlayer : Grid
+    private readonly IPipe _pipe;
+    private readonly WaveOut _waveOut;
+    private readonly RtspStreamReader _rtspStream;
+
+    private ConnectionSettings _settings;
+
+    public VideoPlayer()
     {
-        private readonly IPipe _pipe;
-        private readonly IOptionsMonitor<ConnectionSettings> _connectionSettings;
+        _pipe = App.ServiceProvider.GetService<IPipe>();
 
-        private readonly LibVLC _libvlc;
+        var connectionSettings = App.ServiceProvider.GetService<IOptionsMonitor<ConnectionSettings>>();
 
-        private uint _width;
-        private uint _height;
-        private uint _pitch;
-        private WriteableBitmap _bitmap;
-        private MemoryMappedFile _file;
-        private MemoryMappedViewAccessor _accessor;
-        private MediaPlayer _mediaPlayer;
+        _settings = connectionSettings.CurrentValue;
 
-        public VideoPlayer()
+        var settingsState = connectionSettings.OnChange(settings =>
         {
-            _pipe = App.ServiceProvider.GetService<IPipe>();
-
-            var videoState = _pipe.HandleAsync<ChangeVideoState>(OnChangeVideoState);
-            var soundStateChanged = _pipe.Subscribe<SoundStateChanged>(OnSoundStateChanged);
-
-            _connectionSettings = App.ServiceProvider.GetService<IOptionsMonitor<ConnectionSettings>>();
-            _connectionSettings.OnChange(Connect);
-
-            Core.Initialize();
-
-            _width = 960;
-            _height = 576;
-            _pitch = 960 * 4;
-
-            _bitmap = new WriteableBitmap(Convert.ToInt32(_width), Convert.ToInt32(_height));
-            _file = MemoryMappedFile.CreateNew(null, _pitch * _height);
-            _accessor = _file.CreateViewAccessor();
-
-            _libvlc = new LibVLC("--intf=dummy", "--vout=dummy");
-
-            Connect(_connectionSettings.CurrentValue);
-
-            InitializeComponent();
-
-            _image.Source = _bitmap;
-
-            void UnloadEventHandler()
-            {
-                videoState.Dispose();
-                soundStateChanged.Dispose();
-                _mediaPlayer.Stop();
-                _mediaPlayer.Dispose();
-                _libvlc.Dispose();
-                _accessor.Dispose();
-                _file.Dispose();
-            };
-
-            Unloaded += (_, _) => UnloadEventHandler();
-            MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
-        }
-
-        Task OnChangeVideoState(ChangeVideoState command) => Task.Run(() =>
-        {
-            if (_mediaPlayer is null)
+            if (_settings == settings)
             {
                 return;
             }
 
-            DispatcherQueue.TryEnqueue(delegate
-            {
-                Visibility = command.IsPaused ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
-            });
+            _settings = settings;
 
-            if (command.IsPaused)
-            {
-                if (_mediaPlayer.IsPlaying)
-                {
-                    _mediaPlayer.Stop();
-                }
-            }
-            else
-            {
-                if (!_mediaPlayer.IsPlaying)
-                {
-                    _mediaPlayer.Play();
-                }
-            }
+            Connect();
         });
 
-        Task OnSoundStateChanged(SoundStateChanged @event)
-        {
-            _mediaPlayer.Mute = @event.IsMuted;
+        var videoState = _pipe.HandleAsync<ChangeVideoState>(OnChangeVideoState);
+        var soundStateChanged = _pipe.Subscribe<SoundStateChanged>(OnSoundStateChanged);
 
-            return Task.CompletedTask;
-        }
+        _waveOut = new WaveOut();
+        _rtspStream = new RtspStreamReader();
 
-        void Connect(ConnectionSettings settings)
+        InitializeComponent();
+
+        void UnloadEventHandler()
         {
-            if (_mediaPlayer is not null)
+            settingsState.Dispose();
+            videoState.Dispose();
+            soundStateChanged.Dispose();
+            _rtspStream.Dispose();
+            _waveOut.Stop();
+            _waveOut.Dispose();
+        };
+
+        Unloaded += (_, _) => UnloadEventHandler();
+        MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
+    }
+
+    Task OnChangeVideoState(ChangeVideoState command) => Task.Run(() =>
+    {
+        DispatcherQueue.TryEnqueue(delegate
+        {
+            Visibility = command.IsPaused ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+        });
+
+        if (command.IsPaused)
+        {
+            if (!_rtspStream.IsStopped)
             {
-                _mediaPlayer.Stop();
-                _mediaPlayer.Dispose();
+                _rtspStream.Stop();
             }
-
-            var uri = new Uri($"rtsp://{settings.Username}:{settings.Password}@{settings.Host}:{settings.RtspPort}/av0_0");
-
-            _mediaPlayer = new MediaPlayer(new Media(_libvlc, uri));
-            _mediaPlayer.EnableHardwareDecoding = true;
-            _mediaPlayer.SetVideoFormat("BGRA", _width, _height, _pitch);
-            _mediaPlayer.SetVideoCallbacks(VideoLock, null, VideoDisplay);
-            _mediaPlayer.Play();
         }
-
-        IntPtr VideoLock(IntPtr opaque, IntPtr planes)
+        else
         {
-            try
+            if (_rtspStream.IsStopped)
             {
-                Marshal.WriteIntPtr(planes, _accessor.SafeMemoryMappedViewHandle.DangerousGetHandle());
+                _rtspStream.Start();
             }
-            catch { }
+        }
+    });
 
-            return IntPtr.Zero;
+    Task OnSoundStateChanged(SoundStateChanged @event)
+    {
+        if (@event.IsMuted)
+        {
+            if (_waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                _waveOut.Pause();
+            }
+        }
+        else
+        {
+            if (_waveOut.PlaybackState != PlaybackState.Playing)
+            {
+                _waveOut.Play();
+            }
         }
 
-        void VideoDisplay(IntPtr opaque, IntPtr picture)
-        {
-            try
-            {
-                var stream = _file.CreateViewStream();
+        return Task.CompletedTask;
+    }
 
-                DispatcherQueue.TryEnqueue(delegate
+    public void Connect()
+    {
+        var uriBuilder = new UriBuilder
+        {
+            Scheme = "rtsp",
+            Host = _settings.Host,
+            Port = _settings.RtspPort,
+            UserName = _settings.Username,
+            Password = _settings.Password,
+            Path = "av0_0",
+        };
+
+        var format = _rtspStream.Start(uriBuilder.Uri.ToString());
+
+        InitializeVideo(format.Video);
+        InitializeAudio(format.Audio);
+    }
+
+    void InitializeVideo(RtspStreamVideoFormat format)
+    {
+        if (format is null)
+        {
+            return;
+        }
+
+        DispatcherQueue.TryEnqueue(delegate
+        {
+            var bitmap = new WriteableBitmap(format.Width, format.Height);
+
+            _rtspStream.OnVideoFrameDecoded = data =>
+            {
+                DispatcherQueue?.TryEnqueue(delegate
                 {
-                    using var sourceStream = _bitmap.PixelBuffer.AsStream();
+                    data.CopyTo(bitmap.PixelBuffer);
 
-                    stream.CopyTo(sourceStream);
-
-                    _bitmap.Invalidate();
+                    bitmap.Invalidate();
                 });
-            }
-            catch { }
+            };
+
+            _image.Source = bitmap;
+        });
+    }
+
+    void InitializeAudio(RtspStreamAudioFormat format)
+    {
+        _waveOut.Stop();
+
+        if (format is null)
+        {
+            return;
         }
+
+        var waveFormat = new WaveFormat(format.SampleRate, format.Channels);
+
+        var waveProvider = new BufferedWaveProvider(waveFormat)
+        {
+            BufferLength = format.SampleRate / 2,
+            DiscardOnBufferOverflow = true
+        };
+
+        _rtspStream.OnAudioFrameDecoded = (data) =>
+        {
+            waveProvider.AddSamples(data, 0, data.Length);
+        };
+
+        _waveOut.Init(waveProvider);
+        _waveOut.Play();
     }
 }

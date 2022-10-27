@@ -6,50 +6,54 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace Anteater.Intercom.Gui.Controls
+namespace Anteater.Intercom.Gui.Controls;
+
+public partial class DoorLockButton : Button
 {
-    public partial class DoorLockButton : Button
+    public static readonly DependencyProperty IsDoorLockedProperty = DependencyProperty
+        .Register(nameof(IsDoorLocked), typeof(bool), typeof(DoorLockButton), PropertyMetadata
+        .Create(false));
+
+    private readonly BackChannelConnection _backChannelConnection;
+    private readonly IEventPublisher _pipe;
+
+    public DoorLockButton()
     {
-        public static readonly DependencyProperty IsDoorLockedProperty = DependencyProperty
-            .Register(nameof(IsDoorLocked), typeof(bool), typeof(DoorLockButton), PropertyMetadata
-            .Create(false));
+        _backChannelConnection = App.ServiceProvider.GetRequiredService<BackChannelConnection>();
+        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
 
-        private readonly BackChannelConnection _backChannelConnection;
-        private readonly IEventPublisher _pipe;
+        Loaded += OnLoaded;
 
-        public DoorLockButton()
+        InitializeComponent();        
+    }
+
+    void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        IsDoorLocked = true;
+    }
+
+    public bool IsDoorLocked
+    {
+        get => Convert.ToBoolean(GetValue(IsDoorLockedProperty));
+        set => SetValue(IsDoorLockedProperty, value);
+    }
+
+    protected override void OnTapped(TappedRoutedEventArgs e)
+    {
+        e.Handled = false;
+
+        if (IsDoorLocked)
         {
-            _backChannelConnection = App.ServiceProvider.GetRequiredService<BackChannelConnection>();
-            _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+            IsDoorLocked = false;
 
-            InitializeComponent();
+            _pipe.Publish(new DoorLockStateChanged(false));
 
-            IsDoorLocked = true;
-        }
-
-        public bool IsDoorLocked
-        {
-            get => Convert.ToBoolean(GetValue(IsDoorLockedProperty));
-            set => SetValue(IsDoorLockedProperty, value);
-        }
-
-        protected override void OnTapped(TappedRoutedEventArgs e)
-        {
-            e.Handled = false;
-
-            if (IsDoorLocked)
+            _backChannelConnection.UnlockDoorAsync().ContinueWith(_ =>
             {
-                IsDoorLocked = false;
+                DispatcherQueue.TryEnqueue(() => IsDoorLocked = true);
 
-                _pipe.Publish(new DoorLockStateChanged(false));
-
-                _backChannelConnection.UnlockDoorAsync().ContinueWith(_ =>
-                {
-                    DispatcherQueue.TryEnqueue(() => IsDoorLocked = true);
-
-                    _pipe.Publish(new DoorLockStateChanged(true));
-                });
-            }
+                _pipe.Publish(new DoorLockStateChanged(true));
+            });
         }
     }
 }

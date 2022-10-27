@@ -3,51 +3,50 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Anteater.Pipe;
 
-namespace Anteater.Intercom.Device.Events
+namespace Anteater.Intercom.Device.Events;
+
+public class AlarmEvent : IEvent
 {
-    public class AlarmEvent : IEvent
+    private static readonly Regex EventRegEx = new Regex(@"^(?<date>\d\d\d\d-\d\d-\d\d);(?<time>\d\d:\d\d:\d\d);(?<type>\w+);(?<status>[01]);(?<numbers>\d+(,\d+)*)$", RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+
+    public static bool TryParse(string value, out AlarmEvent alarmEvent)
     {
-        private static readonly Regex EventRegEx = new Regex(@"^(?<date>\d\d\d\d-\d\d-\d\d);(?<time>\d\d:\d\d:\d\d);(?<type>\w+);(?<status>[01]);(?<numbers>\d+(,\d+)*)$", RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+        alarmEvent = default;
 
-        public static bool TryParse(string value, out AlarmEvent alarmEvent)
+        var match = EventRegEx.Match(value ?? string.Empty);
+
+        if (match.Success && Enum.TryParse<EventType>(match.Groups["type"].Value, out var eventType))
         {
-            alarmEvent = default;
-
-            var match = EventRegEx.Match(value ?? string.Empty);
-
-            if (match.Success && Enum.TryParse<EventType>(match.Groups["type"].Value, out var eventType))
+            alarmEvent = new AlarmEvent
             {
-                alarmEvent = new AlarmEvent
-                {
-                    DateTime = DateTime.Parse($"{match.Groups["date"]} {match.Groups["time"]}"),
-                    Type = eventType,
-                    Status = match.Groups["status"].Value == "1",
-                    Numbers = match.Groups["numbers"].Value?.Split(',')
-                        .Select(x => ushort.TryParse(x, out var num) ? num : (ushort?)null)
-                        .Where(x => x.HasValue)
-                        .Select(x => x.Value)
-                        .ToArray() ?? Array.Empty<ushort>()
-                };
+                DateTime = DateTime.Parse($"{match.Groups["date"]} {match.Groups["time"]}"),
+                Type = eventType,
+                Status = match.Groups["status"].Value == "1",
+                Numbers = match.Groups["numbers"].Value?.Split(',')
+                    .Select(x => ushort.TryParse(x, out var num) ? num : (ushort?)null)
+                    .Where(x => x.HasValue)
+                    .Select(x => x.Value)
+                    .ToArray() ?? Array.Empty<ushort>()
+            };
 
-                return true;
-            }
-
-            return false;
+            return true;
         }
 
-        public DateTime DateTime { get; private set; }
+        return false;
+    }
 
-        public EventType Type { get; private set; }
+    public DateTime DateTime { get; private set; }
 
-        public bool Status { get; private set; }
+    public EventType Type { get; private set; }
 
-        public ushort[] Numbers { get; private set; }
+    public bool Status { get; private set; }
 
-        public enum EventType
-        {
-            SensorAlarm,
-            SensorOutAlarm,
-            MotionDetection
-        }
+    public ushort[] Numbers { get; private set; }
+
+    public enum EventType
+    {
+        SensorAlarm,
+        SensorOutAlarm,
+        MotionDetection
     }
 }
