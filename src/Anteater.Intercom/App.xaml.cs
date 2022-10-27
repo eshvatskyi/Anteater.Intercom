@@ -93,7 +93,7 @@ sealed partial class App : Application
 
             var alarmService = ServiceProvider.GetRequiredService<AlarmEventsService>();
 
-            //alarmService.Start();
+            alarmService.Start();
 
             window.Closed += delegate
             {
