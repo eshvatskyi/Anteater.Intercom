@@ -4,6 +4,7 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+	<MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
   </PropertyGroup>
 
 </Project>

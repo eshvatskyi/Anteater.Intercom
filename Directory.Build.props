@@ -1,8 +1,8 @@
 <Project>
 
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <PreserveCompilationContext>true</PreserveCompilationContext>
+    <LangVersion>preview</LangVersion>
+    <!--PreserveCompilationContext>true</PreserveCompilationContext-->
     <RepositoryRootDirectory>$(MSBuildThisFileDirectory)</RepositoryRootDirectory>
   </PropertyGroup>
 

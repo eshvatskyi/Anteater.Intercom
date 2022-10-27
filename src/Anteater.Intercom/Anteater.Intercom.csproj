@@ -1,49 +1,60 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <Platforms>x64;x86</Platforms>
-    <UseWPF>true</UseWPF>
-    <RootNamespace>Anteater.Intercom</RootNamespace>
+    <Platforms>x86</Platforms>
+    <TargetFramework>net6.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <LangVersion>preview</LangVersion>
+
     <AssemblyName>AnteaterIntercom</AssemblyName>
+    <RootNamespace>Anteater.Intercom</RootNamespace>
+    <ApplicationManifest>App.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Icon.ico</ApplicationIcon>
+
+    <UseWinUI>true</UseWinUI>
+    <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <WindowsPackageType>None</WindowsPackageType>
+    <PublishSingleFile>true</PublishSingleFile>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="16.6.13" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.19" />
-    <PackageReference Include="NAudio" Version="1.10.0" />
-    <PackageReference Include="System.Reactive.Linq" Version="4.4.1" />    
+    <PackageReference Include="Anteater.Pipe" Version="1.0.3" />
+    <PackageReference Include="LibVLCSharp" Version="3.6.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.2.220902.1-preview1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.25201-preview" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="2.0.8" />
+    <PackageReference Include="NAudio" Version="2.1.0" />
+    <PackageReference Include="PInvoke.User32" Version="0.7.124" />
+    <PackageReference Include="System.IO.Pipelines" Version="6.0.3" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.17.4" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Alanta.Client.Media\Alanta.Client.Media.csproj" />
-    <ProjectReference Include="..\RtspClientSharp.Decoding\RtspClientSharp.Decoding.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Gui\Views\Intercom.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="Properties\Settings.Designer.cs">
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-    </Compile>
+    <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\BellRingOff.png" />
-    <Resource Include="Assets\BellRingOn.png" />
-    <Resource Include="Assets\CallEnd.png" />
-    <Resource Include="Assets\CallStart.png" />
-    <Resource Include="Assets\DoorBell.mp3" />
-    <Resource Include="Assets\DoorLock.png" />
-    <Resource Include="Assets\DoorUnlock.png" />
-    <Resource Include="Assets\Icon.ico" />
-    <Resource Include="Assets\VolumeMute.png" />
-    <Resource Include="Assets\VolumeUp.png" />
+    <Content Include="Assets\BellRingOff.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\BellRingOn.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\CallEnd.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\CallStart.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\DoorBell.mp3" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\DoorLock.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\DoorUnlock.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\VolumeMute.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\VolumeUp.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,16 +62,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Properties\Settings.settings">
+    <Content Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
+    </Content>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
   </ItemGroup>
-
-  <ItemGroup>
-    <Page Update="Gui\Views\Intercom.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-  </ItemGroup>
-
 </Project>

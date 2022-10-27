@@ -3,37 +3,39 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
-using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Anteater.Intercom.Device.Audio.TcpTransport;
 using Anteater.Intercom.Device.Events;
+using Anteater.Pipe;
+using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom.Device.Audio
 {
     public class BackChannelConnection
     {
-        private readonly AlarmEventsService _alarmEvents;
+        private readonly IOptionsMonitor<ConnectionSettings> _connectionSettings;
+        private readonly IEventPublisher _pipe;
 
         private bool _isDuplexMode;
 
         private TcpClient _client;
+        private NetworkStream _stream;
         private ExtFrameAudioPacketFactory _frameFactory;
 
-        public BackChannelConnection(AlarmEventsService alarmEvents)
+        public BackChannelConnection(IOptionsMonitor<ConnectionSettings> connectionSettings, IEventPublisher pipe)
         {
-            _alarmEvents = alarmEvents ?? throw new ArgumentNullException(nameof(alarmEvents));
+            _connectionSettings = connectionSettings;
+            _pipe = pipe;
 
-            _alarmEvents.AsObservable()
-                .Where(x => x.Type == AlarmEvent.EventType.SensorAlarm && x.Status)
-                .Subscribe(e =>
+            _pipe.Subscribe<AlarmEvent>(x => x
+                .Where(x => x.Status && x.Type == AlarmEvent.EventType.SensorAlarm)
+                .Where(x => x.Numbers.FirstOrDefault() == 1)
+                .DoAsync(async x =>
                 {
-                    if (e.Numbers.FirstOrDefault() == 1)
-                    {
-                        Connect();
-                        _isDuplexMode = false;
-                    }
-                });
+                    await ConnectAsync();
+                    _isDuplexMode = false;
+                }));
         }
 
         public bool IsOpen { get; private set; }
@@ -44,31 +46,30 @@ namespace Anteater.Intercom.Device.Audio
 
         public int AudioBits { get; private set; }
 
-        public void Connect()
+        public async Task ConnectAsync()
         {
             try
             {
                 _isDuplexMode = true;
 
-                var settings = ConnectionSettings.Default;
-
                 _client = new TcpClient();
-                _client.Connect(settings.Host, settings.DataPort);
+                _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-                var stream = _client.GetStream();
+                await _client.ConnectAsync(_connectionSettings.CurrentValue.Host, _connectionSettings.CurrentValue.DataPort);
 
-                stream.Write(new AceptHeader
+                _stream = _client.GetStream();
+
+                await _stream.WriteAsync(new AceptHeader
                 {
-                    Username = settings.Username,
-                    Password = settings.Password,
+                    Username = _connectionSettings.CurrentValue.Username,
+                    Password = _connectionSettings.CurrentValue.Password,
                     Flag = 17767,
                     SocketType = 2,
                     Misc = 0
                 }.ToBytes());
+                await _stream.FlushAsync();
 
-                stream.Flush();
-
-                var commHeader = CommHeader.Read(stream);
+                var commHeader = await CommHeader.ReadAsync(_stream);
 
                 switch (commHeader.ErrorCode)
                 {
@@ -77,7 +78,7 @@ namespace Anteater.Intercom.Device.Audio
                         throw new InvalidOperationException("Failed to open audio backchannel.");
                 }
 
-                var tcpInfoHeader = TalkInfoHeader.Read(stream);
+                var tcpInfoHeader = await TalkInfoHeader.ReadAsync(_stream);
 
                 AudioSamples = tcpInfoHeader.AudioSamples;
                 AudioChannels = tcpInfoHeader.AudioChannels;
@@ -94,16 +95,14 @@ namespace Anteater.Intercom.Device.Audio
             }
         }
 
-        public void Send(short[] data)
+        public async Task SendAsync(short[] data)
         {
             try
             {
                 if (IsOpen)
                 {
-                    var stream = _client.GetStream();
-
-                    stream.Write(_frameFactory.Create(data));
-                    stream.Flush();
+                    await _stream.WriteAsync(_frameFactory.Create(data));
+                    await _stream.FlushAsync();
                 }
             }
             catch
@@ -113,7 +112,7 @@ namespace Anteater.Intercom.Device.Audio
             }
         }
 
-        public IObservable<(bool Status, string Message)> UnlockDoor()
+        public async Task<(bool Status, string Message)> UnlockDoorAsync()
         {
             var isDuplexMode = _isDuplexMode;
 
@@ -122,47 +121,44 @@ namespace Anteater.Intercom.Device.Audio
                 Disconnect();
             }
 
-            return Observable
-                .FromAsync(UnlockDoorAsync)
-                .Select(response =>
-                {
-                    if (!response.Status)
-                    {
-                        return Observable.Return(response);
-                    }
-                    else
-                    {
-                        return _alarmEvents.AsObservable()
-                            .Where(x => x.Type == AlarmEvent.EventType.SensorOutAlarm && x.Status == false)
-                            .Timeout(TimeSpan.FromSeconds(10))
-                            .Select(x => (response.Status, response.Message))
-                            .OnErrorResumeNext<(bool Status, string Message)>(Observable.Return((false, "Device is not healthy.")));
-                    }
-                })
-                .Switch()
-                .OnErrorResumeNext<(bool Status, string Message)>(Observable.Return((false, "Unable to unlock door.")))
-                .Take(1)
-                .Do(_ =>
-                {
-                    if (isDuplexMode)
-                    {
-                        Connect();
-                    }
-                });
+            var (status, message) = await SendUnlockDoorAsync();
+
+            if (!status)
+            {
+                return (false, message);
+            }
+
+            var tcs = new TaskCompletionSource();
+
+            _pipe.Subscribe<AlarmEvent>(x => x
+                .Where(x => !x.Status && x.Type == AlarmEvent.EventType.SensorOutAlarm)
+                .Do(x => tcs.TrySetResult()));
+
+            if (tcs.Task != await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(10))))
+            {
+                return (false, "Device is not healthy.");
+            }
+
+            await tcs.Task;
+
+            if (isDuplexMode)
+            {
+                _ = ConnectAsync();
+            }
+
+            return (true, "");
         }
 
-        static async Task<(bool Status, string Message)> UnlockDoorAsync()
+        async Task<(bool Status, string Message)> SendUnlockDoorAsync()
         {
-            var settings = ConnectionSettings.Default;
-
-            var enpoint = new Uri($"http://{settings.Host}:{settings.WebPort}/cgi-bin/alarmout_cgi?action=set&user={settings.Username}&pwd={settings.Password}&Output=0&Status=1");
+            var enpoint = new Uri($"http://{_connectionSettings.CurrentValue.Host}:{_connectionSettings.CurrentValue.WebPort}/cgi-bin/alarmout_cgi?action=set&user={_connectionSettings.CurrentValue.Username}&pwd={_connectionSettings.CurrentValue.Password}&Output=0&Status=1");
 
             using var client = new HttpClient();
 
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{settings.Username}:{settings.Password}")));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_connectionSettings.CurrentValue.Username}:{_connectionSettings.CurrentValue.Password}")));
 
-            var response = await client.GetAsync(enpoint).ConfigureAwait(false);
-            var content = response.Content != null ? await response.Content.ReadAsStringAsync().ConfigureAwait(false) : string.Empty;
+            var response = await client.GetAsync(enpoint);
+            var content = response.Content != null ? await response.Content.ReadAsStringAsync() : string.Empty;
 
             return (response.IsSuccessStatusCode, content);
         }

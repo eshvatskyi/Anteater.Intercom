@@ -1,36 +1,17 @@
-using Anteater.Intercom.Properties;
-
 namespace Anteater.Intercom.Device
 {
-    public class ConnectionSettings
+    public record ConnectionSettings
     {
-        public static ConnectionSettings Default { get; }
+        public string Host { get; set; }
 
-        static ConnectionSettings()
-        {
-            Default = new ConnectionSettings(Settings.Default.Host, Settings.Default.Username, Settings.Default.Password);
-        }
+        public string Username { get; set; }
 
-        private ConnectionSettings(string host, string username = null, string password = null, int webPort = 80, int rtspPort = 554, int dataPort = 5000)
-        {
-            Host = host;
-            Username = username;
-            Password = password;
-            WebPort = webPort;
-            RtspPort = rtspPort;
-            DataPort = dataPort;
-        }
+        public string Password { get; set; }
 
-        public string Host { get; }
+        public int WebPort { get; set; } = 80;
 
-        public string Username { get; }
+        public int RtspPort { get; set; } = 554;
 
-        public string Password { get; }
-
-        public int WebPort { get; }
-
-        public int RtspPort { get; }
-
-        public int DataPort { get; }
+        public int DataPort { get; set; } = 5000;
     }
 }

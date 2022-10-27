@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Anteater.Intercom (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Anteater.Intercom (Unpackaged)": {
+      "commandName": "Project",
+      "hotReloadEnabled": true
+    }
+  }
+}
