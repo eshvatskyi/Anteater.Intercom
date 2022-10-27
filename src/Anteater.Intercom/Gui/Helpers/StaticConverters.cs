@@ -2,35 +2,34 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 
-namespace Anteater.Intercom.Gui
+namespace Anteater.Intercom.Gui.Helpers;
+
+public class BooleanToVisibilityConverter : IValueConverter
 {
-    public class BooleanToVisibilityConverter : IValueConverter
+    public object Convert(object value, Type targetType, object parameter, string language)
     {
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            var boolean = value as bool?;
+        var boolean = value as bool?;
 
-            return boolean == true ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotSupportedException();
-        }
+        return boolean == true ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public class InverseBooleanConverter : IValueConverter
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
     {
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            var boolean = value as bool?;
+        throw new NotSupportedException();
+    }
+}
 
-            return !(boolean == true);
-        }
+public class InverseBooleanConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        var boolean = value as bool?;
 
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            throw new NotSupportedException();
-        }
+        return !(boolean == true);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    {
+        throw new NotSupportedException();
     }
 }

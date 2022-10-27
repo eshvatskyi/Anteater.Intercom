@@ -6,59 +6,63 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace Anteater.Intercom.Gui.Controls
+namespace Anteater.Intercom.Gui.Controls;
+
+public partial class SoundMuteButton : Button
 {
-    public partial class SoundMuteButton : Button
+    public static readonly DependencyProperty IsSoundMutedProperty = DependencyProperty
+        .Register(nameof(IsSoundMuted), typeof(bool), typeof(SoundMuteButton), PropertyMetadata
+        .Create(false));
+
+    private readonly IEventPublisher _pipe;
+
+    public SoundMuteButton()
     {
-        public static readonly DependencyProperty IsSoundMutedProperty = DependencyProperty
-            .Register(nameof(IsSoundMuted), typeof(bool), typeof(SoundMuteButton), PropertyMetadata
-            .Create(false));
+        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
 
-        private readonly IEventPublisher _pipe;
-
-        public SoundMuteButton()
+        var callStateChanged = _pipe.Subscribe<CallStateChanged>(x =>
         {
-            _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
-
-            var callStateChanged = _pipe.Subscribe<CallStateChanged>(x =>
+            DispatcherQueue.TryEnqueue(() =>
             {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    IsEnabled = !x.IsCalling;
-                    _pipe.Publish(new SoundStateChanged(x.IsCalling ? false : IsSoundMuted));
-                });
-
-                return Task.CompletedTask;
+                IsEnabled = !x.IsCalling;
+                _pipe.Publish(new SoundStateChanged(x.IsCalling ? false : IsSoundMuted));
             });
 
-            InitializeComponent();
+            return Task.CompletedTask;
+        });
 
-            IsSoundMuted = true;
+        Loaded += OnLoaded;
 
-            _pipe.Publish(new SoundStateChanged(IsSoundMuted));
+        InitializeComponent();
 
-            void UnloadEventHandler()
-            {
-                callStateChanged.Dispose();
-            };
-
-            Unloaded += (_, _) => UnloadEventHandler();
-            MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
-        }
-
-        public bool IsSoundMuted
+        void UnloadEventHandler()
         {
-            get => Convert.ToBoolean(GetValue(IsSoundMutedProperty));
-            set => SetValue(IsSoundMutedProperty, value);
-        }
+            callStateChanged.Dispose();
+        };
 
-        protected override void OnTapped(TappedRoutedEventArgs e)
-        {
-            e.Handled = false;
+        Unloaded += (_, _) => UnloadEventHandler();
+        MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
+    }
 
-            IsSoundMuted = !IsSoundMuted;
+    public bool IsSoundMuted
+    {
+        get => Convert.ToBoolean(GetValue(IsSoundMutedProperty));
+        set => SetValue(IsSoundMutedProperty, value);
+    }
 
-            _pipe.Publish(new SoundStateChanged(IsSoundMuted));
-        }
+    void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        IsSoundMuted = true;
+
+        _pipe.Publish(new SoundStateChanged(IsSoundMuted));
+    }
+
+    protected override void OnTapped(TappedRoutedEventArgs e)
+    {
+        e.Handled = false;
+
+        IsSoundMuted = !IsSoundMuted;
+
+        _pipe.Publish(new SoundStateChanged(IsSoundMuted));
     }
 }

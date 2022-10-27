@@ -1,17 +1,16 @@
-namespace Anteater.Intercom.Device
+namespace Anteater.Intercom.Device;
+
+public record ConnectionSettings
 {
-    public record ConnectionSettings
-    {
-        public string Host { get; set; }
+    public string Host { get; set; } = "127.0.0.1";
 
-        public string Username { get; set; }
+    public string Username { get; set; } = "";
 
-        public string Password { get; set; }
+    public string Password { get; set; } = "";
 
-        public int WebPort { get; set; } = 80;
+    public int WebPort { get; set; } = 80;
 
-        public int RtspPort { get; set; } = 554;
+    public int RtspPort { get; set; } = 554;
 
-        public int DataPort { get; set; } = 5000;
-    }
+    public int DataPort { get; set; } = 5000;
 }

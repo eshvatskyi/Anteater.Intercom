@@ -10,137 +10,136 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using NAudio.Wave;
 
-namespace Anteater.Intercom.Gui.Controls
+namespace Anteater.Intercom.Gui.Controls;
+
+public partial class CallButton : Button
 {
-    public partial class CallButton : Button
+    public static readonly DependencyProperty IsCallStartedProperty = DependencyProperty
+        .Register(nameof(IsCallStarted), typeof(bool), typeof(CallButton), PropertyMetadata
+        .Create(false));
+
+    private readonly BackChannelConnection _backChannelConnection;
+    private readonly IEventPublisher _pipe;
+
+    private CancellationTokenSource _cts;
+
+    public CallButton()
     {
-        public static readonly DependencyProperty IsCallStartedProperty = DependencyProperty
-            .Register(nameof(IsCallStarted), typeof(bool), typeof(CallButton), PropertyMetadata
-            .Create(false));
+        _backChannelConnection = App.ServiceProvider.GetRequiredService<BackChannelConnection>();
+        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
 
-        private readonly BackChannelConnection _backChannelConnection;
-        private readonly IEventPublisher _pipe;
-
-        private CancellationTokenSource _cts;
-
-        public CallButton()
+        var doorLockStateChanged = _pipe.Subscribe<DoorLockStateChanged>(x =>
         {
-            _backChannelConnection = App.ServiceProvider.GetRequiredService<BackChannelConnection>();
-            _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+            DispatcherQueue.TryEnqueue(() => IsEnabled = x.IsLocked);
 
-            var doorLockStateChanged = _pipe.Subscribe<DoorLockStateChanged>(x =>
-            {
-                DispatcherQueue.TryEnqueue(() => IsEnabled = x.IsLocked);
+            return Task.CompletedTask;
+        });
 
-                return Task.CompletedTask;
-            });
+        InitializeComponent();
 
-            InitializeComponent();
+        void UnloadEventHandler()
+        {
+            _cts?.Cancel();
+            doorLockStateChanged.Dispose();
+        };
 
-            void UnloadEventHandler()
-            {
-                doorLockStateChanged.Dispose();
-                _cts?.Cancel();
-            };
+        Unloaded += (_, _) => UnloadEventHandler();
+        MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
+    }
 
-            Unloaded += (_, _) => UnloadEventHandler();
-            MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
+    public bool IsCallStarted
+    {
+        get => Convert.ToBoolean(GetValue(IsCallStartedProperty));
+        set => SetValue(IsCallStartedProperty, value);
+    }
+
+    protected override void OnTapped(TappedRoutedEventArgs e)
+    {
+        e.Handled = false;
+
+        IsCallStarted = !IsCallStarted;
+
+        _pipe.Publish(new CallStateChanged(IsCallStarted));
+
+        if (IsCallStarted)
+        {
+            _cts = new CancellationTokenSource();
+
+            Task.Run(StartCallAsync);
+        }
+        else
+        {
+            _cts?.Cancel();
+        }
+    }
+
+    async Task StartCallAsync()
+    {
+        var disconnect = _backChannelConnection.IsOpen == false;
+
+        if (!_backChannelConnection.IsOpen)
+        {
+            await _backChannelConnection.ConnectAsync();
         }
 
-        public bool IsCallStarted
+        var echoCanceller = new WebRtcFilter(600, 200, new(), new(), true, false, false);
+
+        var capture = new WasapiLoopbackCapture();
+        capture.DataAvailable += (_, args) => echoCanceller.RegisterFramePlayed(args.Buffer);
+
+        var waveIn = new WaveInEvent
         {
-            get => Convert.ToBoolean(GetValue(IsCallStartedProperty));
-            set => SetValue(IsCallStartedProperty, value);
-        }
+            WaveFormat = new WaveFormat(8000, 1),
+            BufferMilliseconds = 10
+        };
 
-        protected override void OnTapped(TappedRoutedEventArgs e)
+        waveIn.DataAvailable += async (_, args) =>
         {
-            e.Handled = false;
+            echoCanceller.Write(args.Buffer);
 
-            IsCallStarted = !IsCallStarted;
-
-            _pipe.Publish(new CallStateChanged(IsCallStarted));
-
-            if (IsCallStarted)
+            try
             {
-                _cts = new CancellationTokenSource();
-
-                Task.Run(StartCallAsync);
-            }
-            else
-            {
-                _cts?.Cancel();
-            }
-        }
-
-        async Task StartCallAsync()
-        {
-            var disconnect = _backChannelConnection.IsOpen == false;
-
-            if (!_backChannelConnection.IsOpen)
-            {
-                await _backChannelConnection.ConnectAsync();
-            }
-
-            var echoCanceller = new WebRtcFilter(600, 200, new(), new(), true, false, false);
-
-            var capture = new WasapiLoopbackCapture();
-            capture.DataAvailable += (_, args) => echoCanceller.RegisterFramePlayed(args.Buffer);
-
-            var waveIn = new WaveInEvent
-            {
-                WaveFormat = new WaveFormat(8000, 1),
-                BufferMilliseconds = 10
-            };
-
-            waveIn.DataAvailable += async (_, args) =>
-            {
-                echoCanceller.Write(args.Buffer);
-
-                try
+                bool moreFrames;
+                do
                 {
-                    bool moreFrames;
-                    do
+                    var frameBuffer = new short[320];
+                    if (echoCanceller.Read(frameBuffer, out moreFrames))
                     {
-                        var frameBuffer = new short[320];
-                        if (echoCanceller.Read(frameBuffer, out moreFrames))
-                        {
-                            await _backChannelConnection.SendAsync(frameBuffer);
-                        }
-                    } while (moreFrames);
-                }
-                catch
-                {
-                    _cts.Cancel();
-                }
-            };
-
-            _cts.Token.Register(() =>
+                        await _backChannelConnection.SendAsync(frameBuffer);
+                    }
+                } while (moreFrames);
+            }
+            catch
             {
-                DispatcherQueue.TryEnqueue(() => IsCallStarted = false);
+                _cts.Cancel();
+            }
+        };
 
-                _pipe.Publish(new CallStateChanged(false));
+        _cts.Token.Register(() =>
+        {
+            DispatcherQueue.TryEnqueue(() => IsCallStarted = false);
 
-                if (disconnect)
-                {
-                    _backChannelConnection.Disconnect();
-                }
+            _pipe.Publish(new CallStateChanged(false));
 
-                capture.StopRecording();
-                capture.Dispose();
+            if (disconnect)
+            {
+                _backChannelConnection.Disconnect();
+            }
 
-                waveIn.StopRecording();
-                waveIn.Dispose();
-            });
+            capture.StopRecording();
+            capture.Dispose();
 
-            capture.StartRecording();
-            waveIn.StartRecording();
+            waveIn.StopRecording();
+            waveIn.Dispose();
+        });
 
-            var tcs = new TaskCompletionSource();
+        capture.StartRecording();
+        waveIn.StartRecording();
 
-            _cts.Token.Register(() => tcs.TrySetCanceled());
+        var tcs = new TaskCompletionSource();
 
-            await tcs.Task;
-        }
+        _cts.Token.Register(() => tcs.TrySetCanceled());
+
+        await tcs.Task;
     }
 }

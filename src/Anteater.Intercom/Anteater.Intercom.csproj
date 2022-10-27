@@ -2,9 +2,9 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <Platforms>x86</Platforms>
-    <TargetFramework>net6.0-windows10.0.19041.0</TargetFramework>
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <TargetFramework>net7.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
-    <LangVersion>preview</LangVersion>
 
     <AssemblyName>AnteaterIntercom</AssemblyName>
     <RootNamespace>Anteater.Intercom</RootNamespace>
@@ -16,7 +16,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <WindowsPackageType>None</WindowsPackageType>
-    <PublishSingleFile>true</PublishSingleFile>
+    <!--<PublishSingleFile>true</PublishSingleFile>-->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
@@ -24,16 +24,17 @@
 
   <ItemGroup>
     <PackageReference Include="Anteater.Pipe" Version="1.0.3" />
-    <PackageReference Include="LibVLCSharp" Version="3.6.6" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.2.220902.1-preview1" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.25201-preview" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="2.0.8" />
+    <PackageReference Include="FFmpeg.AutoGen" Version="5.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Ini" Version="7.0.0-*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0-*" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="7.0.0-*" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="7.0.0-*" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.2.220930.4-preview2" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.25227-preview" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="2.0.9" />
     <PackageReference Include="NAudio" Version="2.1.0" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
-    <PackageReference Include="System.IO.Pipelines" Version="6.0.3" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.17.4" />
+    <PackageReference Include="System.IO.Pipelines" Version="7.0.0-*" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,6 +46,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Assets\Back.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\BellRingOff.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\BellRingOn.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\CallEnd.png" CopyToOutputDirectory="PreserveNewest" />
@@ -55,21 +57,18 @@
     <Content Include="Assets\Icon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\VolumeMute.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\VolumeUp.png" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
+    <Content Include="Assets\Settings.png" CopyToOutputDirectory="PreserveNewest" />
 
+    <None Include="FFmpeg\$(Platform)\*.dll" Visible="false">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </None>
+
+    <None Include="FFmpeg\**\*.dll" Visible="true" />
+  </ItemGroup>
+  
   <ItemGroup>
     <SplashScreen Include="Assets\SplashScreen.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </Content>
-    <Compile Update="Properties\Settings.Designer.cs">
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-    </Compile>
   </ItemGroup>
 </Project>

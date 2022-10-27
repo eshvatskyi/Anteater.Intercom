@@ -4,103 +4,85 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using static PInvoke.User32;
 
-namespace Anteater.Intercom
+namespace Anteater.Intercom;
+
+sealed partial class MainWindow : Window
 {
-    sealed partial class MainWindow : Window
+    public static MainWindow Instance { get; private set; }
+
+    private readonly IntPtr _hwnd;
+    private readonly AppWindow _appWindow;
+
+    private bool _isFullScreen = false;
+
+    public MainWindow()
     {
-        private const int WmSyscommand = 0x0112;
-        private const int ScMonitorpower = 0xF170;
-        private const int MonitorShutoff = 2;
-        private const int MonitorOnPtr = -1;
+        Instance = this;
 
-        public static MainWindow Instance { get; private set; }
+        Title = "Home Guard";
 
-        private readonly IntPtr _hwnd;
-        private readonly AppWindow _appWindow;
+        _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
-        private bool _isFullScreen = false;
+        var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
 
-        public MainWindow()
+        _appWindow = AppWindow.GetFromWindowId(windowId);
+        _appWindow.Show(true);
+        _appWindow.SetIcon("Assets/Icon.ico");
+
+        InitialSizeAndPosition();
+
+        InitializeComponent();
+
+        Activate();
+
+        BringToForeground();
+
+        DispatcherQueue.TryEnqueue(delegate
         {
-            Instance = this;
+            NavigateToType(typeof(Gui.Pages.Intercom));
+        });
+    }
 
-            Title = "Home Guard";
-
-            InitializeComponent();
-
-            _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-
-            var windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
-
-            _appWindow = AppWindow.GetFromWindowId(windowId);
-            _appWindow.Show(true);
-            _appWindow.SetIcon("Assets/Icon.ico");
-
-            InitialSizeAndPosition();
-
-            DispatcherQueue.TryEnqueue(delegate
-            {
-                NavigateToType(typeof(Gui.Pages.Intercom));
-            });
-        }
-
-        public bool FullScreenMode
+    public bool FullScreenMode
+    {
+        get => _isFullScreen;
+        set
         {
-            get => _isFullScreen;
-            set
+            if (value)
             {
-                if (value)
-                {
-                    _appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
-                }
-                else
-                {
-                    _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-
-                    InitialSizeAndPosition();
-                }
-
-                _isFullScreen = value;
+                _appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
             }
-        }
-
-        public void BringToForeground()
-        {
-            DispatcherQueue.TryEnqueue(delegate
+            else
             {
-                PInvoke.User32.SetForegroundWindow(_hwnd);
+                _appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
 
-                FullScreenMode = true;
-            });
+                InitialSizeAndPosition();
+            }
+
+            _isFullScreen = value;
         }
+    }
 
-        public void NavigateToType(Type type)
+    void InitialSizeAndPosition()
+    {
+        var display = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
+
+        _appWindow.Resize(new() { Width = 800, Height = 600 });
+        _appWindow.Move(new() { X = (display.WorkArea.Width - 800) / 2, Y = (display.WorkArea.Height - 600) / 2 });
+    }
+
+    public void BringToForeground()
+    {
+        DispatcherQueue.TryEnqueue(delegate
         {
-            MainFrame.NavigateToType(type, null, null);
-        }
+            SetForegroundWindow(_hwnd);
 
-        public void MonitorOff()
-        {
-            SendMessage(_hwnd, (WindowMessage)WmSyscommand, (IntPtr)ScMonitorpower, (IntPtr)MonitorShutoff);
-        }
+            FullScreenMode = true;
+        });
+    }
 
-        unsafe public void MonitorOn()
-        {
-            SendMessage(_hwnd, (WindowMessage)WmSyscommand, (IntPtr)ScMonitorpower, (IntPtr)MonitorOnPtr);
-            //var mouseMove = new INPUT();
-
-            //mouseMove.type = InputType.INPUT_MOUSE;
-            //mouseMove.Inputs.mi.dwFlags = MOUSEEVENTF.MOUSEEVENTF_LEFTDOWN;
-
-            //SendInput(1, &mouseMove, Marshal.SizeOf(new INPUT()));
-        }
-
-        void InitialSizeAndPosition()
-        {
-            var display = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
-
-            _appWindow.Resize(new() { Width = 800, Height = 600 });
-            _appWindow.Move(new() { X = (display.WorkArea.Width - 800) / 2, Y = (display.WorkArea.Height - 600) / 2 });
-        }
+    public void NavigateToType(Type type, object parameter = null)
+    {
+        MainFrame.NavigateToType(type, parameter, null);
     }
 }

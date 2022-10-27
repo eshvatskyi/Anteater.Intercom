@@ -9,101 +9,130 @@ using System.Threading.Tasks;
 using Anteater.Pipe;
 using Microsoft.Extensions.Options;
 
-namespace Anteater.Intercom.Device.Events
+namespace Anteater.Intercom.Device.Events;
+
+public class AlarmEventsService : BackgroundService
 {
-    public class AlarmEventsService : BackgroundService
+    static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(60);
+
+    private readonly IEventPublisher _pipe;
+    private readonly HttpClient _client;
+
+    private ConnectionSettings _settings;
+    private CancellationTokenSource _cts;
+
+    public AlarmEventsService(IOptionsMonitor<ConnectionSettings> connectionSettings, IEventPublisher pipe)
     {
-        static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
+        _pipe = pipe;
 
-        private readonly IOptionsMonitor<ConnectionSettings> _connectionSettings;
-        private readonly IEventPublisher _pipe;
-
-        public AlarmEventsService(IOptionsMonitor<ConnectionSettings> connectionSettings, IEventPublisher pipe)
+        _client = new HttpClient
         {
-            _connectionSettings = connectionSettings;
-            _pipe = pipe;
-        }
+            Timeout = Timeout.InfiniteTimeSpan
+        };
 
-        protected override async Task RunAsync(CancellationToken cancellationToken)
+        _settings = connectionSettings.CurrentValue;
+
+        connectionSettings.OnChange(settings =>
         {
-            try
-            {
-                var endpoint = new Uri($"http://{_connectionSettings.CurrentValue.Host}/cgi-bin/alarmchangestate_cgi?user={_connectionSettings.CurrentValue.Username}&pwd={_connectionSettings.CurrentValue.Password}&parameter=MotionDetection;SensorAlarm;SensorOutAlarm");
-
-                using var client = new HttpClient();
-
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_connectionSettings.CurrentValue.Username}:{_connectionSettings.CurrentValue.Password}")));
-
-                client.Timeout = Timeout.InfiniteTimeSpan;
-
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    try
-                    {
-                        using var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, endpoint), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-                        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-
-                        await ProcessMessagesAsync(PipeReader.Create(stream), cancellationToken);
-
-                        await Task.Delay(100, cancellationToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch
-                    {
-                        await Task.Delay(RetryDelay, cancellationToken);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
+            if (_settings == settings)
             {
                 return;
             }
-        }
 
-        async Task ProcessMessagesAsync(PipeReader reader, CancellationToken cancellationToken)
+            _settings = settings;
+            _cts?.Cancel();
+        });
+    }
+
+    protected override async Task RunAsync(CancellationToken cancellationToken)
+    {
+        try
         {
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var readResult = await reader.ReadAsync(cancellationToken);
+                    _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-                    if (readResult.IsCanceled)
+                    var uriBuilder = new UriBuilder
                     {
-                        break;
-                    }
+                        Scheme = "http",
+                        Host = _settings.Host,
+                        Port = _settings.WebPort,
+                        Path = "cgi-bin/alarmchangestate_cgi",
+                        Query = $"user={_settings.Username}&pwd={_settings.Password}&parameter=MotionDetection;SensorAlarm;SensorOutAlarm",
+                    };
 
-                    reader.AdvanceTo(ParseEvents(readResult.Buffer));
+                    using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.Uri);
 
-                    if (readResult.IsCompleted)
-                    {
-                        break;
-                    }
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Username}:{_settings.Password}")));
+
+                    using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+                    response.EnsureSuccessStatusCode();
+
+                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+                    await ProcessMessagesAsync(PipeReader.Create(stream), _cts.Token);
+
+                    await Task.Delay(100, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    await Task.Delay(RetryDelay, cancellationToken);
                 }
             }
-            finally
-            {
-                await reader.CompleteAsync();
-            }
         }
-
-        SequencePosition ParseEvents(ReadOnlySequence<byte> buffer)
+        catch (OperationCanceledException)
         {
-            var reader = new SequenceReader<byte>(buffer);
+            return;
+        }
+    }
 
-            while (reader.TryReadTo(out ReadOnlySequence<byte> line, (byte)'\n'))
+    async Task ProcessMessagesAsync(PipeReader reader, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
             {
-                if (AlarmEvent.TryParse(Encoding.ASCII.GetString(line), out var alarmEvent))
+                var readResult = await reader.ReadAsync(cancellationToken);
+
+                if (readResult.IsCanceled)
                 {
-                    _pipe.Publish(alarmEvent);
+                    break;
+                }
+
+                reader.AdvanceTo(ParseEvents(readResult.Buffer));
+
+                if (readResult.IsCompleted)
+                {
+                    break;
                 }
             }
-
-            return reader.Position;
         }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            await reader.CompleteAsync();
+        }
+    }
+
+    SequencePosition ParseEvents(ReadOnlySequence<byte> buffer)
+    {
+        var reader = new SequenceReader<byte>(buffer);
+
+        while (reader.TryReadTo(out ReadOnlySequence<byte> line, (byte)'\n'))
+        {
+            if (AlarmEvent.TryParse(Encoding.ASCII.GetString(line), out var alarmEvent))
+            {
+                _pipe.Publish(alarmEvent);
+            }
+        }
+
+        return reader.Position;
     }
 }
