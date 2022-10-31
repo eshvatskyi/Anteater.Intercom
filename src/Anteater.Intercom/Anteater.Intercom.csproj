@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="Anteater.Pipe" Version="1.0.3" />
+    <PackageReference Include="Clowd.Squirrel" Version="2.9.42" />
     <PackageReference Include="FFmpeg.AutoGen" Version="5.1.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Ini" Version="7.0.0-*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0-*" />
