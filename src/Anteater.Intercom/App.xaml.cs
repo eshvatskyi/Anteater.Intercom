@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Squirrel;
 
 namespace Anteater.Intercom;
 
@@ -41,10 +42,19 @@ sealed partial class App : Application
 
     void ConfigureServices(IServiceCollection services)
     {
-        var builder = new ConfigurationBuilder()
-            .AddIniFile("App.ini", optional: true, reloadOnChange: true);
+        using var mgr = new UpdateManager("\\\\10.0.1.100\\Shared\\AnteaterIntercom");
 
-        var config = builder.Build();
+        if (mgr.IsInstalledApp)
+        {
+            if (mgr.UpdateApp().GetAwaiter().GetResult() != null)
+            {
+                UpdateManager.RestartApp();
+            }
+        }
+
+        var config = new ConfigurationBuilder()
+            .AddIniFile($"{(mgr.IsInstalledApp ? mgr.AppDirectory + "/" : "")}App.ini", optional: true, reloadOnChange: true)
+            .Build();
 
         services.AddSingleton<IConfiguration>(config);
 
@@ -60,9 +70,11 @@ sealed partial class App : Application
 
     void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        var alert = new Popup();
-        alert.Child = new TextBlock() { Text = e.Exception.ToString() };
-        alert.IsOpen = true;
+        _ = new Popup
+        {
+            Child = new TextBlock() { Text = e.Exception.ToString() },
+            IsOpen = true,
+        };
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

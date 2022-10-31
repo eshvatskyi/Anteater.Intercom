@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Squirrel;
 
 namespace Anteater.Intercom.Gui.Pages;
 
@@ -40,7 +41,9 @@ sealed partial class Settings : Page
             config.AppendLine($"RtspPort={_rtspPort.Value}");
             config.AppendLine($"DataPort={_dataPort.Value}");
 
-            using var configFile = new FileStream("App.ini", FileMode.Create, FileAccess.Write);
+            using var mgr = new UpdateManager("");
+
+            using var configFile = new FileStream($"{(mgr.IsInstalledApp ? mgr.AppDirectory + "/" : "")}App.ini", FileMode.Create, FileAccess.Write);
 
             configFile.Write(Encoding.UTF8.GetBytes(config.ToString()));
             configFile.Close();
