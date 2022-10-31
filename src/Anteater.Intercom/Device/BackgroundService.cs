@@ -16,7 +16,7 @@ public abstract class BackgroundService
 
     public void Start()
     {
-        _runningTask = RunAsync(_cts.Token);
+        _runningTask = Task.Run(() => RunAsync(_cts.Token));
     }
 
     public async Task StopAsync()

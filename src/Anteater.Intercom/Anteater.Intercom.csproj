@@ -44,18 +44,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\Back.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\BellRingOff.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\BellRingOn.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\CallEnd.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\CallStart.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Back.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\BellRingOff.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\BellRingOn.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\CallEnd.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\CallStart.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\DoorBell.mp3" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\DoorLock.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\DoorUnlock.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\DoorLock.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\DoorUnlock.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Icon.ico" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\VolumeMute.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\VolumeUp.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="Assets\Settings.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\VolumeMute.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\VolumeUp.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Settings.svg" CopyToOutputDirectory="PreserveNewest" />
 
     <None Include="FFmpeg\$(Platform)\*.dll" Visible="false">
       <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
@@ -67,6 +67,6 @@
   </ItemGroup>
   
   <ItemGroup>
-    <SplashScreen Include="Assets\SplashScreen.png" />
+    <SplashScreen Include="Assets\SplashScreen.svg" />
   </ItemGroup>
 </Project>

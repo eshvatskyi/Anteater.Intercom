@@ -9,13 +9,13 @@
     <Image>
         <i:Interaction.Behaviors>
             <ic:DataTriggerBehavior Binding="{Binding IsDoorLocked, ElementName=_self}" Value="{x:Null}">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/DoorLock.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/DoorLock.svg"/>
             </ic:DataTriggerBehavior>
             <ic:DataTriggerBehavior Binding="{Binding IsDoorLocked, ElementName=_self}" Value="True">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/DoorLock.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/DoorLock.svg"/>
             </ic:DataTriggerBehavior>
             <ic:DataTriggerBehavior Binding="{Binding IsDoorLocked, ElementName=_self}" Value="False">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/DoorUnlock.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/DoorUnlock.svg"/>
             </ic:DataTriggerBehavior>
         </i:Interaction.Behaviors>
     </Image>

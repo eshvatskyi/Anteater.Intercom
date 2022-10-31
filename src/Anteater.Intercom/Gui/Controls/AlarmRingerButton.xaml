@@ -5,5 +5,5 @@
     Name="_self"
     Style="{StaticResource Button}"
     Visibility="{Binding IsActive, ElementName=_self, Converter={StaticResource BoolToVisibility}}">
-    <Image Source="ms-appx:///Assets/BellRingOn.png" />
+    <Image Source="ms-appx:///Assets/BellRingOn.svg" />
 </Button>

@@ -56,7 +56,7 @@
                     <RowDefinition Height="17*" />
                 </Grid.RowDefinitions>
                 <Button Grid.Row="1" Tapped="Button_Tapped" Style="{StaticResource Button}">
-                    <Image Source="ms-appx:///Assets/Back.png" />
+                    <Image Source="ms-appx:///Assets/Back.svg" />
                 </Button>
             </Grid>
         </Grid>

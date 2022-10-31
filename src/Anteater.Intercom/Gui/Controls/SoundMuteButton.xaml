@@ -9,13 +9,13 @@
     <Image>
         <i:Interaction.Behaviors>
             <ic:DataTriggerBehavior Binding="{Binding IsSoundMuted, ElementName=_self}" Value="{x:Null}">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/VolumeMute.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/VolumeMute.svg"/>
             </ic:DataTriggerBehavior>
             <ic:DataTriggerBehavior Binding="{Binding IsSoundMuted, ElementName=_self}" Value="True">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/VolumeMute.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/VolumeMute.svg"/>
             </ic:DataTriggerBehavior>
             <ic:DataTriggerBehavior Binding="{Binding IsSoundMuted, ElementName=_self}" Value="False">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/VolumeUp.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/VolumeUp.svg"/>
             </ic:DataTriggerBehavior>
         </i:Interaction.Behaviors>
     </Image>
