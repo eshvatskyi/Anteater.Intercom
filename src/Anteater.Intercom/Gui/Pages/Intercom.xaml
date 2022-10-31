@@ -31,7 +31,7 @@
                 <a:SoundMuteButton Grid.Row="1" />
                 <a:AlarmMuteButton Grid.Row="3" />
                 <Button Grid.Row="5" Tapped="Button_Tapped" Style="{StaticResource Button}">
-                    <Image Source="ms-appx:///Assets/Settings.png" />
+                    <Image Source="ms-appx:///Assets/Settings.svg" />
                 </Button>
             </Grid>
             <Grid Grid.ColumnSpan="2" Grid.Row="1" Visibility="{Binding IsOverlayVisible, ElementName=_self, Converter={StaticResource BoolToVisibility}}">

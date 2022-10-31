@@ -9,13 +9,13 @@
     <Image>
         <i:Interaction.Behaviors>
             <ic:DataTriggerBehavior Binding="{Binding IsCallStarted, ElementName=_self}" Value="{x:Null}">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallStart.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallStart.svg"/>
             </ic:DataTriggerBehavior>
             <ic:DataTriggerBehavior Binding="{Binding IsCallStarted, ElementName=_self}" Value="True">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallEnd.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallEnd.svg"/>
             </ic:DataTriggerBehavior>
             <ic:DataTriggerBehavior Binding="{Binding IsCallStarted, ElementName=_self}" Value="False">
-                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallStart.png"/>
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallStart.svg"/>
             </ic:DataTriggerBehavior>
         </i:Interaction.Behaviors>
     </Image>
