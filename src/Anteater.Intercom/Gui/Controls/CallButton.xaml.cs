@@ -82,7 +82,7 @@ public partial class CallButton : Button
             await _backChannelConnection.ConnectAsync();
         }
 
-        var echoCanceller = new WebRtcFilter(600, 200, new(), new(), true, false, false);
+        var echoCanceller = new WebRtcFilter(1000, 500, new(), new(), true, false, false);
 
         var capture = new WasapiLoopbackCapture();
         capture.DataAvailable += (_, args) => echoCanceller.RegisterFramePlayed(args.Buffer);

@@ -17,6 +17,8 @@ public class ExtFrameAudioPacketFactory
         {
             7 => MuLawEncoder.LinearToMuLawSample,
             3 => ALawEncoder.LinearToALawSample,
+
+            // TODO: need to be replaced with real encoder
             _ => Convert.ToByte,
         };
 

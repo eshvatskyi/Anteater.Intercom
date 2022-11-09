@@ -11,15 +11,20 @@ public unsafe class RtspStreamReader : IDisposable
     static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(60);
 
     private readonly List<RtspStream> _streams = new();
-    private readonly RtspStreamReaderContext _readerContext = new() { IsStopped = true };
-    private readonly object _readLock = new();
+    private readonly object _lock = new();
 
     private string _url = null;
     private AVFormatContext* _context = null;
     private Task _workerTask = Task.CompletedTask;
     private bool _disposedValue;
 
-    public bool IsStopped => _readerContext.IsStopped;
+    public bool IsReadingStopped => IsReconnecting || IsStopping || IsStopped;
+
+    public bool IsReconnecting { get; private set; }
+
+    public bool IsStopping { get; private set; }
+
+    public bool IsStopped { get; private set; }
 
     public Action<byte[]> OnVideoFrameDecoded { get; set; }
 
@@ -32,12 +37,39 @@ public unsafe class RtspStreamReader : IDisposable
             return;
         }
 
-        lock (_readLock)
+        lock (_lock)
         {
             InitializeContext();
             InitializeStreams();
             InitializeWorker();
         }
+    }
+
+    bool CanInitializeContext()
+    {
+        var timestamp = DateTime.Now;
+
+        var context = ffmpeg.avformat_alloc_context();
+
+        context->interrupt_callback = new AVIOInterruptCB
+        {
+            callback = (AVIOInterruptCB_callback)delegate (void* args)
+            {
+                if ((DateTime.Now - *(DateTime*)args).TotalSeconds > 5)
+                {
+                    return 1;
+                }
+
+                return 0;
+            },
+            opaque = &timestamp,
+        };
+
+        var result = ffmpeg.avformat_open_input(&context, _url, null, null) >= 0;
+
+        ffmpeg.avformat_free_context(context);
+
+        return result;
     }
 
     void InitializeContext()
@@ -46,35 +78,18 @@ public unsafe class RtspStreamReader : IDisposable
 
         _context = null;
 
-        var context = ffmpeg.avformat_alloc_context();
-
-        context->interrupt_callback.callback = (AVIOInterruptCB_callback)delegate (void* args)
+        if (!CanInitializeContext())
         {
-            var ctx = (RtspStreamReaderContext*)args;
-
-            // called from ffmpeg.av_read_frame
-            if (ctx->Timestamp == DateTime.MinValue)
-            {
-                return ctx->IsReadingStopped ? 1 : 0;
-            }
-
-            // called from ffmpeg.avformat_open_input
-            if ((DateTime.Now - ctx->Timestamp).TotalSeconds > 5)
-            {
-                return 1;
-            }
-
-            return 0;
-        };
-
-        fixed (RtspStreamReaderContext* readerContext = &_readerContext)
-        {
-            readerContext->Timestamp = DateTime.Now;
-
-            context->interrupt_callback.opaque = readerContext;
+            return;
         }
 
-        if (ffmpeg.avformat_open_input(&context, _url, null, null) < 0)
+        var context = ffmpeg.avformat_alloc_context();
+
+        AVDictionary* stream_opts;
+
+        ffmpeg.av_dict_set(&stream_opts, "timeout", $"{1 * 1000 * 1000}", 0);
+
+        if (ffmpeg.avformat_open_input(&context, _url, null, &stream_opts) < 0)
         {
             ffmpeg.avformat_free_context(context);
             return;
@@ -84,11 +99,6 @@ public unsafe class RtspStreamReader : IDisposable
         {
             ffmpeg.avformat_free_context(context);
             return;
-        }
-
-        fixed (RtspStreamReaderContext* readerContext = &_readerContext)
-        {
-            readerContext->Timestamp = DateTime.MinValue;
         }
 
         _context = context;
@@ -127,20 +137,17 @@ public unsafe class RtspStreamReader : IDisposable
 
     void ReadFrames()
     {
-        fixed (RtspStreamReaderContext* readerContext = &_readerContext)
-        {
-            readerContext->IsReconnecting = false;
-            readerContext->IsStopped = false;
-        }
+        IsReconnecting = false;
+        IsStopped = false;
 
         var packet = ffmpeg.av_packet_alloc();
         var frame = ffmpeg.av_frame_alloc();
 
-        lock (_readLock)
+        lock (_lock)
         {
             while (_context is not null && ffmpeg.av_read_frame(_context, packet) >= 0)
             {
-                if (_readerContext.IsReadingStopped)
+                if (IsReadingStopped)
                 {
                     break;
                 }
@@ -155,16 +162,13 @@ public unsafe class RtspStreamReader : IDisposable
         ffmpeg.av_packet_free(&packet);
         ffmpeg.av_frame_free(&frame);
 
-        if (!_readerContext.IsStopping)
+        if (!IsStopping)
         {
             Task.Delay(RetryDelay).ContinueWith(_ => Start());
         }
 
-        fixed (RtspStreamReaderContext* readerContext = &_readerContext)
-        {
-            readerContext->IsStopping = false;
-            readerContext->IsStopped = true;
-        }
+        IsStopping = false;
+        IsStopped = true;
     }
 
     void DecodeFrame(AVPacket* packet, AVFrame* frame)
@@ -205,22 +209,16 @@ public unsafe class RtspStreamReader : IDisposable
 
     public void Start()
     {
-        fixed (RtspStreamReaderContext* readerContext = &_readerContext)
-        {
-            readerContext->IsReconnecting = true;
-        }
+        IsReconnecting = true;
 
         Initialize();
     }
 
     public void Stop()
     {
-        fixed (RtspStreamReaderContext* readerContext = &_readerContext)
-        {
-            readerContext->IsStopping = true;
-        }
+        IsStopping = true;
 
-        lock (_readLock)
+        lock (_lock)
         {
             if (_context is not null)
             {

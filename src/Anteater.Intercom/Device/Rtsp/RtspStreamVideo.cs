@@ -11,7 +11,10 @@ public unsafe class RtspStreamVideo : RtspStream
 
     public RtspStreamVideo(AVStream* stream) : base(stream)
     {
-        _decodeContext = ffmpeg.sws_getContext(context->width, context->height, context->pix_fmt, context->width, context->height, AVPixelFormat.AV_PIX_FMT_BGRA, 0, null, null, null);
+        if (context is not null)
+        {
+            _decodeContext = ffmpeg.sws_getContext(context->width, context->height, context->pix_fmt, context->width, context->height, AVPixelFormat.AV_PIX_FMT_BGRA, 0, null, null, null);
+        }
     }
 
     public override AVMediaType Type { get; } = AVMediaType.AVMEDIA_TYPE_VIDEO;
@@ -20,21 +23,11 @@ public unsafe class RtspStreamVideo : RtspStream
     {
         var decodedFrame = ffmpeg.av_frame_alloc();
 
-        if (ffmpeg.av_frame_copy_props(decodedFrame, frame) < 0)
-        {
-            return;
-        }
-
         decodedFrame->width = frame->width;
         decodedFrame->height = frame->height;
         decodedFrame->format = (int)AVPixelFormat.AV_PIX_FMT_BGRA;
 
-        if (ffmpeg.av_frame_get_buffer(decodedFrame, 0) < 0)
-        {
-            return;
-        }
-
-        if (ffmpeg.sws_scale(_decodeContext, frame->data, frame->linesize, 0, context->height, decodedFrame->data, decodedFrame->linesize) <= 0)
+        if (ffmpeg.sws_scale_frame(_decodeContext, decodedFrame, frame) <= 0)
         {
             return;
         }
