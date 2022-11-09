@@ -42,15 +42,7 @@ sealed partial class App : Application
 
     void ConfigureServices(IServiceCollection services)
     {
-        using var mgr = new UpdateManager("\\\\10.0.1.100\\Shared\\AnteaterIntercom");
-
-        if (mgr.IsInstalledApp)
-        {
-            if (mgr.UpdateApp().GetAwaiter().GetResult() != null)
-            {
-                UpdateManager.RestartApp();
-            }
-        }
+        using var mgr = new UpdateManager("");
 
         var config = new ConfigurationBuilder()
             .AddIniFile($"{(mgr.IsInstalledApp ? mgr.AppDirectory + "/" : "")}App.ini", optional: true, reloadOnChange: true)
@@ -64,6 +56,7 @@ sealed partial class App : Application
 
         services.AddAnteaterPipe();
 
+        services.AddSingleton<UpdaterService>();
         services.AddSingleton<AlarmEventsService>();
         services.AddSingleton<BackChannelConnection>();
     }
@@ -103,12 +96,15 @@ sealed partial class App : Application
                 }
             }, cts.Token);
 
+            var updaterService = ServiceProvider.GetRequiredService<UpdaterService>();
             var alarmService = ServiceProvider.GetRequiredService<AlarmEventsService>();
 
+            updaterService.Start();
             alarmService.Start();
 
             window.Closed += delegate
             {
+                _ = updaterService.StopAsync();
                 _ = alarmService.StopAsync();
 
                 cts.Cancel();
