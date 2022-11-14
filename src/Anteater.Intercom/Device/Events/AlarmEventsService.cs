@@ -75,7 +75,7 @@ public class AlarmEventsService : BackgroundService
 
                     await ProcessMessagesAsync(PipeReader.Create(stream), _cts.Token);
 
-                    await Task.Delay(100, cancellationToken);
+                    await Task.Delay(RetryDelay, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {

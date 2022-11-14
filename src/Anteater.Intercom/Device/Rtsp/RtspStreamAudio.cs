@@ -1,13 +1,21 @@
 using System;
-using FFmpeg.AutoGen;
+using FFmpeg.AutoGen.Abstractions;
 
 namespace Anteater.Intercom.Device.Rtsp;
 
 public unsafe class RtspStreamAudio : RtspStream
 {
-    public RtspStreamAudio(AVStream* stream) : base(stream) { }
+    public RtspStreamAudio(AVStream* stream) : base(stream)
+    {
+        if (context is not null)
+        {
+            Format = new RtspStreamAudioFormat(context->sample_rate, context->ch_layout.nb_channels);
+        }
+    }
 
     public override AVMediaType Type { get; } = AVMediaType.AVMEDIA_TYPE_AUDIO;
+
+    public RtspStreamAudioFormat Format { get; }
 
     public override void DecodeFrame(AVFrame* frame)
     {

@@ -1,23 +1,19 @@
 using System;
-using FFmpeg.AutoGen;
+using FFmpeg.AutoGen.Abstractions;
 
 namespace Anteater.Intercom.Device.Rtsp;
 
 public unsafe class RtspStreamVideo : RtspStream
 {
-    private readonly SwsContext* _decodeContext;
+    private SwsContext* _decodeContext;
 
     private bool _disposedValue;
 
-    public RtspStreamVideo(AVStream* stream) : base(stream)
-    {
-        if (context is not null)
-        {
-            _decodeContext = ffmpeg.sws_getContext(context->width, context->height, context->pix_fmt, context->width, context->height, AVPixelFormat.AV_PIX_FMT_BGRA, 0, null, null, null);
-        }
-    }
+    public RtspStreamVideo(AVStream* stream) : base(stream) { }
 
     public override AVMediaType Type { get; } = AVMediaType.AVMEDIA_TYPE_VIDEO;
+
+    public RtspStreamVideoFormat Format { get; private set; }
 
     public override void DecodeFrame(AVFrame* frame)
     {
@@ -26,6 +22,13 @@ public unsafe class RtspStreamVideo : RtspStream
         decodedFrame->width = frame->width;
         decodedFrame->height = frame->height;
         decodedFrame->format = (int)AVPixelFormat.AV_PIX_FMT_BGRA;
+
+        if (_decodeContext is null)
+        {
+            Format = new RtspStreamVideoFormat(decodedFrame->width, decodedFrame->height, (AVPixelFormat)decodedFrame->format);
+
+            _decodeContext = ffmpeg.sws_getContext(frame->width, frame->height, (AVPixelFormat)frame->format, decodedFrame->width, decodedFrame->height, (AVPixelFormat)decodedFrame->format, 0, null, null, null);
+        }
 
         if (ffmpeg.sws_scale_frame(_decodeContext, decodedFrame, frame) <= 0)
         {
@@ -50,7 +53,10 @@ public unsafe class RtspStreamVideo : RtspStream
         {
             if (disposing)
             {
-                ffmpeg.sws_freeContext(_decodeContext);
+                if (_decodeContext is not null)
+                {
+                    ffmpeg.sws_freeContext(_decodeContext);
+                }
             }
 
             _disposedValue = true;

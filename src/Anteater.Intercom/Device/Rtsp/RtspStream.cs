@@ -1,5 +1,5 @@
 using System;
-using FFmpeg.AutoGen;
+using FFmpeg.AutoGen.Abstractions;
 
 namespace Anteater.Intercom.Device.Rtsp;
 
@@ -7,10 +7,9 @@ public unsafe abstract class RtspStream : IDisposable
 {
     public delegate void FrameDecodedEventHandler(object sender, byte[] data);
 
-    public readonly AVCodec* codec;
-    public readonly AVCodecContext* context;
-
     public event FrameDecodedEventHandler FrameDecoded;
+
+    public readonly AVCodecContext* context;
 
     private bool _disposedValue;
 
@@ -18,11 +17,14 @@ public unsafe abstract class RtspStream : IDisposable
     {
         if (stream is not null)
         {
-            codec = ffmpeg.avcodec_find_decoder(stream->codecpar->codec_id);
+            var codec = ffmpeg.avcodec_find_decoder(stream->codecpar->codec_id);
+
             context = ffmpeg.avcodec_alloc_context3(codec);
 
             ffmpeg.avcodec_parameters_to_context(context, stream->codecpar);
             ffmpeg.avcodec_open2(context, codec, null);
+
+            ffmpeg.av_free(codec);
         }
     }
 
@@ -41,12 +43,13 @@ public unsafe abstract class RtspStream : IDisposable
         {
             if (disposing)
             {
-                fixed (AVCodecContext** ctx = &context)
+                if (context is not null)
                 {
-                    ffmpeg.avcodec_free_context(ctx);
+                    fixed (AVCodecContext** ctx = &context)
+                    {
+                        ffmpeg.avcodec_free_context(ctx);
+                    }
                 }
-
-                ffmpeg.av_free(codec);
             }
 
             _disposedValue = true;

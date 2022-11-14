@@ -8,11 +8,10 @@ using System.Threading.Tasks;
 using Anteater.Intercom.Device;
 using Anteater.Intercom.Device.Audio;
 using Anteater.Intercom.Device.Events;
+using FFmpeg.AutoGen.Bindings.DynamicallyLoaded;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Squirrel;
 
 namespace Anteater.Intercom;
@@ -29,13 +28,13 @@ sealed partial class App : Application
 
     public App()
     {
+        DynamicallyLoadedBindings.Initialize();
+
         var services = new ServiceCollection();
 
         ConfigureServices(services);
 
         ServiceProvider = services.BuildServiceProvider();
-
-        UnhandledException += OnUnhandledException;
 
         InitializeComponent();
     }
@@ -59,15 +58,6 @@ sealed partial class App : Application
         services.AddSingleton<UpdaterService>();
         services.AddSingleton<AlarmEventsService>();
         services.AddSingleton<BackChannelConnection>();
-    }
-
-    void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-    {
-        _ = new Popup
-        {
-            Child = new TextBlock() { Text = e.Exception.ToString() },
-            IsOpen = true,
-        };
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
