@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using FFmpeg.AutoGen;
+using FFmpeg.AutoGen.Abstractions;
 
 namespace Anteater.Intercom.Device.Rtsp;
 
@@ -16,6 +17,7 @@ public unsafe class RtspStreamReader : IDisposable
     private string _url = null;
     private AVFormatContext* _context = null;
     private Task _workerTask = Task.CompletedTask;
+    private CancellationTokenSource _cts;
     private bool _disposedValue;
 
     public bool IsReadingStopped => IsReconnecting || IsStopping || IsStopped;
@@ -42,6 +44,15 @@ public unsafe class RtspStreamReader : IDisposable
             InitializeContext();
             InitializeStreams();
             InitializeWorker();
+        }
+
+        // sometimes video stream not properly initialized.
+        // we need to read a frame to get proper format
+        var vStream = _streams.OfType<RtspStreamVideo>().FirstOrDefault();
+
+        while (vStream is not null && vStream.Format is null)
+        {
+            Thread.Sleep(5);
         }
     }
 
@@ -87,6 +98,7 @@ public unsafe class RtspStreamReader : IDisposable
 
         AVDictionary* stream_opts;
 
+        ffmpeg.av_dict_set(&stream_opts, "rtsp_transport", "tcp", 0);
         ffmpeg.av_dict_set(&stream_opts, "timeout", $"{1 * 1000 * 1000}", 0);
 
         if (ffmpeg.avformat_open_input(&context, _url, null, &stream_opts) < 0)
@@ -164,7 +176,9 @@ public unsafe class RtspStreamReader : IDisposable
 
         if (!IsStopping)
         {
-            Task.Delay(RetryDelay).ContinueWith(_ => Start());
+            _cts = new CancellationTokenSource();
+
+            Task.Delay(RetryDelay, _cts.Token).ContinueWith(_ => Start(), TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
         IsStopping = false;
@@ -199,12 +213,10 @@ public unsafe class RtspStreamReader : IDisposable
 
         Initialize();
 
-        var vStream = _streams.FirstOrDefault(x => x.Type == AVMediaType.AVMEDIA_TYPE_VIDEO);
-        var aStream = _streams.FirstOrDefault(x => x.Type == AVMediaType.AVMEDIA_TYPE_AUDIO);
+        var vStream = _streams.OfType<RtspStreamVideo>().FirstOrDefault();
+        var aStream = _streams.OfType<RtspStreamAudio>().FirstOrDefault();
 
-        return new RtspStreamFormat(
-            Video: vStream is null ? null : new RtspStreamVideoFormat(vStream.context->width, vStream.context->height, vStream.context->pix_fmt),
-            Audio: aStream is null ? null : new RtspStreamAudioFormat(aStream.context->sample_rate, aStream.context->ch_layout.nb_channels));
+        return new RtspStreamFormat(Video: vStream?.Format, Audio: aStream?.Format);
     }
 
     public void Start()
@@ -216,6 +228,8 @@ public unsafe class RtspStreamReader : IDisposable
 
     public void Stop()
     {
+        _cts?.Cancel();
+
         IsStopping = true;
 
         lock (_lock)
