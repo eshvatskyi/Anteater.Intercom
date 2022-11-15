@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Anteater.Intercom.Device.Audio.TcpTransport;
+namespace Anteater.Intercom.Services.Audio.Headers;
 
 public class TalkInfoHeader
 {

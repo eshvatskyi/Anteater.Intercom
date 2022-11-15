@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Anteater.Intercom.Device;
+namespace Anteater.Intercom.Services;
 
 public abstract class BackgroundService
 {

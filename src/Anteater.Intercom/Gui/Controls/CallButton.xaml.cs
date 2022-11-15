@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Alanta.Client.Media.Dsp.WebRtc;
-using Anteater.Intercom.Device.Audio;
+using Anteater.Intercom.Services.Audio;
 using Anteater.Pipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -18,14 +18,14 @@ public partial class CallButton : Button
         .Register(nameof(IsCallStarted), typeof(bool), typeof(CallButton), PropertyMetadata
         .Create(false));
 
-    private readonly BackChannelConnection _backChannelConnection;
+    private readonly ReversAudioService _backChannelConnection;
     private readonly IEventPublisher _pipe;
 
     private CancellationTokenSource _cts;
 
     public CallButton()
     {
-        _backChannelConnection = App.ServiceProvider.GetRequiredService<BackChannelConnection>();
+        _backChannelConnection = App.ServiceProvider.GetRequiredService<ReversAudioService>();
         _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
 
         var doorLockStateChanged = _pipe.Subscribe<DoorLockStateChanged>(x =>

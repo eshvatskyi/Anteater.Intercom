@@ -1,17 +1,18 @@
 using System;
 using System.Linq;
+using Anteater.Intercom.Services.Audio.Headers;
 using NAudio.Codecs;
 
-namespace Anteater.Intercom.Device.Audio.TcpTransport;
+namespace Anteater.Intercom.Services.Audio;
 
-public class ExtFrameAudioPacketFactory
+public class ReversAudioPacketFactory
 {
     private readonly CommHeader _tcpCommHeader;
     private readonly HvFrameHeader _tcpHvFrameHeader;
     private readonly ExtFrameAudioHeader _tcpExtFrameAudioHeader;
     private readonly Func<short, byte> _encoder;
 
-    public ExtFrameAudioPacketFactory(int encodeType, int samples, int channels)
+    public ReversAudioPacketFactory(int encodeType, int samples, int channels)
     {
         _encoder = encodeType switch
         {
@@ -22,7 +23,7 @@ public class ExtFrameAudioPacketFactory
             _ => Convert.ToByte,
         };
 
-        var audioSamples = (samples / 8000) * 320;
+        var audioSamples = samples / 8000 * 320;
 
         _tcpCommHeader = new CommHeader
         {

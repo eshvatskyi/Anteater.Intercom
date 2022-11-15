@@ -5,9 +5,9 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Anteater.Intercom.Device;
-using Anteater.Intercom.Device.Audio;
-using Anteater.Intercom.Device.Events;
+using Anteater.Intercom.Services;
+using Anteater.Intercom.Services.Audio;
+using Anteater.Intercom.Services.Events;
 using FFmpeg.AutoGen.Bindings.DynamicallyLoaded;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,7 +57,7 @@ sealed partial class App : Application
 
         services.AddSingleton<UpdaterService>();
         services.AddSingleton<AlarmEventsService>();
-        services.AddSingleton<BackChannelConnection>();
+        services.AddSingleton<ReversAudioService>();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

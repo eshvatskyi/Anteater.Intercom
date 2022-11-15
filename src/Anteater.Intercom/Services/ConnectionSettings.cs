@@ -1,4 +1,4 @@
-namespace Anteater.Intercom.Device;
+namespace Anteater.Intercom.Services;
 
 public record ConnectionSettings
 {

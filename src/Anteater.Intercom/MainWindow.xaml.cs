@@ -37,10 +37,7 @@ sealed partial class MainWindow : Window
 
         BringToForeground();
 
-        DispatcherQueue.TryEnqueue(delegate
-        {
-            NavigateToType(typeof(Gui.Pages.Intercom));
-        });
+        NavigateToType(typeof(Gui.Pages.Intercom));
     }
 
     public bool FullScreenMode

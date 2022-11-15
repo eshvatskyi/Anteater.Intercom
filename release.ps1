@@ -1,8 +1,14 @@
+#
+# Powershell 7
+#
+
 param([String]$v="1.0.0") 
 
 $assetsDir = ".\src\Anteater.Intercom\Assets"
 $publishDir = ".\publish"
-$squirrelExe = "$env:USERPROFILE\.nuget\packages\clowd.squirrel\2.9.42\tools\Squirrel.exe"
+
+$nugetPackages = $env:NUGET_PACKAGES ?? "$env:USERPROFILE\.nuget\packages"
+$squirrelExe = "$nugetPackages\clowd.squirrel\2.9.42\tools\Squirrel.exe"
 
 if (Test-Path $publishDir) {
   Remove-Item -Path $publishDir -Recurse -Force

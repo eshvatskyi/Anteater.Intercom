@@ -1,6 +1,6 @@
 using FFmpeg.AutoGen.Abstractions;
 
-namespace Anteater.Intercom.Device.Rtsp;
+namespace Anteater.Intercom.Services.Rtsp;
 
 public unsafe class RtspStreamUnknown : RtspStream
 {

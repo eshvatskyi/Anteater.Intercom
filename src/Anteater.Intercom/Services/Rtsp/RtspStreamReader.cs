@@ -4,8 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FFmpeg.AutoGen.Abstractions;
+using static Anteater.Intercom.Services.Rtsp.RtspStream;
 
-namespace Anteater.Intercom.Device.Rtsp;
+namespace Anteater.Intercom.Services.Rtsp;
 
 public unsafe class RtspStreamReader : IDisposable
 {
@@ -28,9 +29,9 @@ public unsafe class RtspStreamReader : IDisposable
 
     public bool IsStopped { get; private set; }
 
-    public Action<byte[]> OnVideoFrameDecoded { get; set; }
+    public event FrameDecodedEventHandler VideoFrameDecoded;
 
-    public Action<byte[]> OnAudioFrameDecoded { get; set; }
+    public event FrameDecodedEventHandler AudioFrameDecoded;
 
     void Initialize()
     {
@@ -46,8 +47,8 @@ public unsafe class RtspStreamReader : IDisposable
             InitializeWorker();
         }
 
-        // sometimes video stream not properly initialized.
-        // we need to read a frame to get proper format
+        // Sometimes (on re-connect) video stream not properly initialized.
+        // We need to read a frame to get proper format
         var vStream = _streams.OfType<RtspStreamVideo>().FirstOrDefault();
 
         while (vStream is not null && vStream.Format is null)
@@ -128,15 +129,27 @@ public unsafe class RtspStreamReader : IDisposable
 
         for (var i = 0; i < _context->nb_streams; i++)
         {
-            var stream = _context->streams[i];
-
-            _streams.Add(RtspStreamFactory.Create(stream, stream->codecpar->codec_type switch
-            {
-                AVMediaType.AVMEDIA_TYPE_VIDEO => data => OnVideoFrameDecoded?.Invoke(data),
-                AVMediaType.AVMEDIA_TYPE_AUDIO => data => OnAudioFrameDecoded?.Invoke(data),
-                _ => null,
-            }));
+            AddStream(_context->streams[i]);
         }
+    }
+
+    void AddStream(AVStream* stream)
+    {
+        RtspStream rtspStream = stream->codecpar->codec_type switch
+        {
+            AVMediaType.AVMEDIA_TYPE_VIDEO => new RtspStreamVideo(stream),
+            AVMediaType.AVMEDIA_TYPE_AUDIO => new RtspStreamAudio(stream),
+            _ => new RtspStreamUnknown(),
+        };
+
+        rtspStream.FrameDecoded += stream->codecpar->codec_type switch
+        {
+            AVMediaType.AVMEDIA_TYPE_VIDEO => (stream, data) => VideoFrameDecoded?.Invoke(stream, data),
+            AVMediaType.AVMEDIA_TYPE_AUDIO => (stream, data) => AudioFrameDecoded?.Invoke(stream, data),
+            _ => null,
+        };
+
+        _streams.Add(rtspStream);
     }
 
     void InitializeWorker()
@@ -252,9 +265,6 @@ public unsafe class RtspStreamReader : IDisposable
         {
             if (disposing)
             {
-                OnVideoFrameDecoded = null;
-                OnAudioFrameDecoded = null;
-
                 Stop();
             }
 

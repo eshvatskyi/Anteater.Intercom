@@ -3,11 +3,11 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Anteater.Pipe;
 
-namespace Anteater.Intercom.Device.Events;
+namespace Anteater.Intercom.Services.Events;
 
 public class AlarmEvent : IEvent
 {
-    private static readonly Regex EventRegEx = new Regex(@"^(?<date>\d\d\d\d-\d\d-\d\d);(?<time>\d\d:\d\d:\d\d);(?<type>\w+);(?<status>[01]);(?<numbers>\d+(,\d+)*)$", RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+    private static readonly Regex EventRegEx = new("""^(?<date>\d\d\d\d-\d\d-\d\d);(?<time>\d\d:\d\d:\d\d);(?<type>\w+);(?<status>[01]);(?<numbers>\d+(,\d+)*)$""", RegexOptions.ExplicitCapture | RegexOptions.Compiled);
 
     public static bool TryParse(string value, out AlarmEvent alarmEvent)
     {
@@ -22,7 +22,8 @@ public class AlarmEvent : IEvent
                 DateTime = DateTime.Parse($"{match.Groups["date"]} {match.Groups["time"]}"),
                 Type = eventType,
                 Status = match.Groups["status"].Value == "1",
-                Numbers = match.Groups["numbers"].Value?.Split(',')
+                Numbers = match.Groups["numbers"].Value?
+                    .Split(',')
                     .Select(x => ushort.TryParse(x, out var num) ? num : (ushort?)null)
                     .Where(x => x.HasValue)
                     .Select(x => x.Value)

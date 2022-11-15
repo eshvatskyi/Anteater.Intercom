@@ -1,9 +1,8 @@
 using System;
 using System.Runtime.InteropServices.WindowsRuntime;
-using System.Security.Policy;
 using System.Threading.Tasks;
-using Anteater.Intercom.Device;
-using Anteater.Intercom.Device.Rtsp;
+using Anteater.Intercom.Services;
+using Anteater.Intercom.Services.Rtsp;
 using Anteater.Pipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -135,7 +134,7 @@ public partial class VideoPlayer : Grid
         {
             var bitmap = new WriteableBitmap(format.Width, format.Height);
 
-            _rtspStream.OnVideoFrameDecoded = data =>
+            _rtspStream.VideoFrameDecoded += (_, data) =>
             {
                 DispatcherQueue?.TryEnqueue(delegate
                 {
@@ -166,7 +165,7 @@ public partial class VideoPlayer : Grid
             DiscardOnBufferOverflow = true
         };
 
-        _rtspStream.OnAudioFrameDecoded = (data) =>
+        _rtspStream.AudioFrameDecoded += (_, data) =>
         {
             waveProvider.AddSamples(data, 0, data.Length);
         };

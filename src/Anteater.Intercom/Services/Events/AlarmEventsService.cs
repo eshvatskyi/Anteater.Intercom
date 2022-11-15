@@ -9,11 +9,13 @@ using System.Threading.Tasks;
 using Anteater.Pipe;
 using Microsoft.Extensions.Options;
 
-namespace Anteater.Intercom.Device.Events;
+namespace Anteater.Intercom.Services.Events;
 
 public class AlarmEventsService : BackgroundService
 {
+    static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
     static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(60);
+    static readonly TimeSpan ContinueDelay = TimeSpan.FromSeconds(5);
 
     private readonly IEventPublisher _pipe;
     private readonly HttpClient _client;
@@ -25,9 +27,9 @@ public class AlarmEventsService : BackgroundService
     {
         _pipe = pipe;
 
-        _client = new HttpClient
+        _client = new HttpClient()
         {
-            Timeout = Timeout.InfiniteTimeSpan
+            Timeout = ConnectionTimeout
         };
 
         _settings = connectionSettings.CurrentValue;
@@ -75,7 +77,7 @@ public class AlarmEventsService : BackgroundService
 
                     await ProcessMessagesAsync(PipeReader.Create(stream), _cts.Token);
 
-                    await Task.Delay(RetryDelay, cancellationToken);
+                    await Task.Delay(ContinueDelay, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {

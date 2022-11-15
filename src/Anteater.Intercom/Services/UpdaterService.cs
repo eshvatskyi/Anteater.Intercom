@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Squirrel;
 
-namespace Anteater.Intercom.Device;
+namespace Anteater.Intercom.Services;
 
 public class UpdaterService : BackgroundService
 {

@@ -5,14 +5,15 @@ using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using Anteater.Intercom.Device.Audio.TcpTransport;
-using Anteater.Intercom.Device.Events;
+using Anteater.Intercom.Services.Audio.Headers;
+using Anteater.Intercom.Services.Events;
 using Anteater.Pipe;
 using Microsoft.Extensions.Options;
+using Anteater.Intercom.Services.Audio;
 
-namespace Anteater.Intercom.Device.Audio;
+namespace Anteater.Intercom.Services.Audio;
 
-public class BackChannelConnection
+public class ReversAudioService
 {
     private readonly IEventPublisher _pipe;
 
@@ -21,9 +22,9 @@ public class BackChannelConnection
 
     private TcpClient _client;
     private NetworkStream _stream;
-    private ExtFrameAudioPacketFactory _frameFactory;
+    private ReversAudioPacketFactory _frameFactory;
 
-    public BackChannelConnection(IOptionsMonitor<ConnectionSettings> connectionSettings, IEventPublisher pipe)
+    public ReversAudioService(IOptionsMonitor<ConnectionSettings> connectionSettings, IEventPublisher pipe)
     {
         _settings = connectionSettings.CurrentValue;
 
@@ -96,7 +97,7 @@ public class BackChannelConnection
             AudioChannels = tcpInfoHeader.AudioChannels;
             AudioBits = tcpInfoHeader.AudioBits;
 
-            _frameFactory = new ExtFrameAudioPacketFactory(tcpInfoHeader.AudioEncodeType, tcpInfoHeader.AudioSamples, tcpInfoHeader.AudioChannels);
+            _frameFactory = new ReversAudioPacketFactory(tcpInfoHeader.AudioEncodeType, tcpInfoHeader.AudioSamples, tcpInfoHeader.AudioChannels);
 
             IsOpen = true;
         }

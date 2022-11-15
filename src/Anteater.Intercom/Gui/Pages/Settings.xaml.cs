@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
-using Anteater.Intercom.Device;
+using Anteater.Intercom.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.UI.Xaml.Controls;

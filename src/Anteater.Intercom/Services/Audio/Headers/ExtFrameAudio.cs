@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text;
 
-namespace Anteater.Intercom.Device.Audio.TcpTransport;
+namespace Anteater.Intercom.Services.Audio.Headers;
 
 public class ExtFrameAudio
 {

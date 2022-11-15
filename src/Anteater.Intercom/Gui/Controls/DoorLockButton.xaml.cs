@@ -1,5 +1,5 @@
 using System;
-using Anteater.Intercom.Device.Audio;
+using Anteater.Intercom.Services.Audio;
 using Anteater.Pipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -14,12 +14,12 @@ public partial class DoorLockButton : Button
         .Register(nameof(IsDoorLocked), typeof(bool), typeof(DoorLockButton), PropertyMetadata
         .Create(false));
 
-    private readonly BackChannelConnection _backChannelConnection;
+    private readonly ReversAudioService _backChannelConnection;
     private readonly IEventPublisher _pipe;
 
     public DoorLockButton()
     {
-        _backChannelConnection = App.ServiceProvider.GetRequiredService<BackChannelConnection>();
+        _backChannelConnection = App.ServiceProvider.GetRequiredService<ReversAudioService>();
         _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
 
         Loaded += OnLoaded;

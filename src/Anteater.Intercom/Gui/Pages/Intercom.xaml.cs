@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Anteater.Intercom.Device.Events;
+using Anteater.Intercom.Services.Events;
 using Anteater.Pipe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;

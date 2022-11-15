@@ -1,11 +1,11 @@
 using System;
 using FFmpeg.AutoGen.Abstractions;
 
-namespace Anteater.Intercom.Device.Rtsp;
+namespace Anteater.Intercom.Services.Rtsp;
 
 public unsafe abstract class RtspStream : IDisposable
 {
-    public delegate void FrameDecodedEventHandler(object sender, byte[] data);
+    public delegate void FrameDecodedEventHandler(RtspStream stream, byte[] data);
 
     public event FrameDecodedEventHandler FrameDecoded;
 
