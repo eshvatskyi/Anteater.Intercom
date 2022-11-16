@@ -1,31 +1,33 @@
 using System;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using Anteater.Intercom.Services.Audio.Headers;
+using Anteater.Intercom.Services.ReversChannel.Headers;
 using Anteater.Intercom.Services.Events;
-using Anteater.Pipe;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Options;
-using Anteater.Intercom.Services.Audio;
 
-namespace Anteater.Intercom.Services.Audio;
+namespace Anteater.Intercom.Services.ReversChannel;
 
-public class ReversAudioService
+public class ReversChannelService : IReversAudioService, IDoorLockService, IRecipient<AlarmEvent>
 {
-    private readonly IEventPublisher _pipe;
+    private readonly IMessenger _messenger;
 
     private ConnectionSettings _settings;
     private bool _isDuplexMode;
 
     private TcpClient _client;
     private NetworkStream _stream;
-    private ReversAudioPacketFactory _frameFactory;
+    private AudioPacketFactory _audioPacketFactory;
 
-    public ReversAudioService(IOptionsMonitor<ConnectionSettings> connectionSettings, IEventPublisher pipe)
+    public ReversChannelService(IMessenger messenger, IOptionsMonitor<ConnectionSettings> connectionSettings)
     {
+        _messenger = messenger;
+
+        _messenger.Register(this);
+
         _settings = connectionSettings.CurrentValue;
 
         connectionSettings.OnChange(settings =>
@@ -37,17 +39,6 @@ public class ReversAudioService
 
             _settings = settings;
         });
-
-        _pipe = pipe;
-
-        _pipe.Subscribe<AlarmEvent>(x => x
-            .Where(x => x.Status && x.Type == AlarmEvent.EventType.SensorAlarm)
-            .Where(x => x.Numbers.FirstOrDefault() == 1)
-            .DoAsync(async x =>
-            {
-                await ConnectAsync();
-                _isDuplexMode = false;
-            }));
     }
 
     public bool IsOpen { get; private set; }
@@ -97,7 +88,7 @@ public class ReversAudioService
             AudioChannels = tcpInfoHeader.AudioChannels;
             AudioBits = tcpInfoHeader.AudioBits;
 
-            _frameFactory = new ReversAudioPacketFactory(tcpInfoHeader.AudioEncodeType, tcpInfoHeader.AudioSamples, tcpInfoHeader.AudioChannels);
+            _audioPacketFactory = new AudioPacketFactory(tcpInfoHeader.AudioEncodeType, tcpInfoHeader.AudioSamples, tcpInfoHeader.AudioChannels);
 
             IsOpen = true;
         }
@@ -114,7 +105,7 @@ public class ReversAudioService
         {
             if (IsOpen)
             {
-                await _stream.WriteAsync(_frameFactory.Create(data));
+                await _stream.WriteAsync(_audioPacketFactory.Create(data));
                 await _stream.FlushAsync();
             }
         }
@@ -143,9 +134,14 @@ public class ReversAudioService
 
         var tcs = new TaskCompletionSource();
 
-        _pipe.Subscribe<AlarmEvent>(x => x
-            .Where(x => !x.Status && x.Type == AlarmEvent.EventType.SensorOutAlarm)
-            .Do(x => tcs.TrySetResult()));
+        _messenger.Register<AlarmEvent>(tcs, (_, message) =>
+        {
+            if (message.Status == false && message.Type == AlarmEvent.EventType.SensorOutAlarm)
+            {
+                tcs.TrySetResult();
+                _messenger.Unregister<AlarmEvent>(tcs);
+            }
+        });
 
         if (tcs.Task != await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(10))))
         {
@@ -187,5 +183,14 @@ public class ReversAudioService
     {
         IsOpen = false;
         _client?.Dispose();
+    }
+
+    async void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
+    {
+        if (message.Status && message.Type == AlarmEvent.EventType.SensorAlarm && message.Numbers is [1, ..])
+        {
+            await ConnectAsync();
+            _isDuplexMode |= false;
+        }
     }
 }

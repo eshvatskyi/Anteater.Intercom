@@ -16,7 +16,7 @@ sealed partial class Settings : Page
 
     public Settings()
     {
-        _connectionSettings = App.ServiceProvider.GetService<IOptionsMonitor<ConnectionSettings>>();
+        _connectionSettings = App.Services.GetService<IOptionsMonitor<ConnectionSettings>>();
 
         InitializeComponent();
 

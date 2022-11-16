@@ -1,5 +1,5 @@
 using System;
-using Anteater.Pipe;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -13,11 +13,11 @@ public partial class AlarmMuteButton : Button
         .Register(nameof(IsSoundMuted), typeof(bool), typeof(AlarmMuteButton), PropertyMetadata
         .Create(false));
 
-    private readonly IEventPublisher _pipe;
+    private readonly IMessenger _messenger;
 
     public AlarmMuteButton()
     {
-        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
 
         Loaded += OnLoaded;
 
@@ -34,7 +34,7 @@ public partial class AlarmMuteButton : Button
     {
         IsSoundMuted = false;
 
-        _pipe.Publish(new AlarmStateChanged(IsSoundMuted));
+        _messenger.Send(new AlarmStateChanged(IsSoundMuted));
     }
 
     protected override void OnTapped(TappedRoutedEventArgs e)
@@ -43,6 +43,6 @@ public partial class AlarmMuteButton : Button
 
         IsSoundMuted = !IsSoundMuted;
 
-        _pipe.Publish(new AlarmStateChanged(IsSoundMuted));
+        _messenger.Send(new AlarmStateChanged(IsSoundMuted));
     }
 }

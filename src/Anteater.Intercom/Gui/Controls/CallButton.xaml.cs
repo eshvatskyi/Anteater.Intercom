@@ -2,8 +2,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Alanta.Client.Media.Dsp.WebRtc;
-using Anteater.Intercom.Services.Audio;
-using Anteater.Pipe;
+using Anteater.Intercom.Services.ReversChannel;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -12,35 +12,31 @@ using NAudio.Wave;
 
 namespace Anteater.Intercom.Gui.Controls;
 
-public partial class CallButton : Button
+public partial class CallButton : Button,
+    IRecipient<DoorLockStateChanged>
 {
     public static readonly DependencyProperty IsCallStartedProperty = DependencyProperty
         .Register(nameof(IsCallStarted), typeof(bool), typeof(CallButton), PropertyMetadata
         .Create(false));
 
-    private readonly ReversAudioService _backChannelConnection;
-    private readonly IEventPublisher _pipe;
+    private readonly IReversAudioService _reversAudio;
+    private readonly IMessenger _messenger;
 
     private CancellationTokenSource _cts;
 
     public CallButton()
     {
-        _backChannelConnection = App.ServiceProvider.GetRequiredService<ReversAudioService>();
-        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+        _reversAudio = App.Services.GetRequiredService<IReversAudioService>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
 
-        var doorLockStateChanged = _pipe.Subscribe<DoorLockStateChanged>(x =>
-        {
-            DispatcherQueue.TryEnqueue(() => IsEnabled = x.IsLocked);
-
-            return Task.CompletedTask;
-        });
+        _messenger.Register(this);
 
         InitializeComponent();
 
         void UnloadEventHandler()
         {
             _cts?.Cancel();
-            doorLockStateChanged.Dispose();
+            _messenger.UnregisterAll(this);
         };
 
         Unloaded += (_, _) => UnloadEventHandler();
@@ -59,7 +55,7 @@ public partial class CallButton : Button
 
         IsCallStarted = !IsCallStarted;
 
-        _pipe.Publish(new CallStateChanged(IsCallStarted));
+        _messenger.Send(new CallStateChanged(IsCallStarted));
 
         if (IsCallStarted)
         {
@@ -75,11 +71,11 @@ public partial class CallButton : Button
 
     async Task StartCallAsync()
     {
-        var disconnect = _backChannelConnection.IsOpen == false;
+        var disconnect = _reversAudio.IsOpen == false;
 
-        if (!_backChannelConnection.IsOpen)
+        if (!_reversAudio.IsOpen)
         {
-            await _backChannelConnection.ConnectAsync();
+            await _reversAudio.ConnectAsync();
         }
 
         var echoCanceller = new WebRtcFilter(1000, 500, new(), new(), true, false, false);
@@ -105,7 +101,7 @@ public partial class CallButton : Button
                     var frameBuffer = new short[320];
                     if (echoCanceller.Read(frameBuffer, out moreFrames))
                     {
-                        await _backChannelConnection.SendAsync(frameBuffer);
+                        await _reversAudio.SendAsync(frameBuffer);
                     }
                 } while (moreFrames);
             }
@@ -117,13 +113,16 @@ public partial class CallButton : Button
 
         _cts.Token.Register(() =>
         {
-            DispatcherQueue.TryEnqueue(() => IsCallStarted = false);
+            DispatcherQueue.TryEnqueue(delegate
+            {
+                IsCallStarted = false;
+            });
 
-            _pipe.Publish(new CallStateChanged(false));
+            _messenger.Send(new CallStateChanged(false));
 
             if (disconnect)
             {
-                _backChannelConnection.Disconnect();
+                _reversAudio.Disconnect();
             }
 
             capture.StopRecording();
@@ -141,5 +140,13 @@ public partial class CallButton : Button
         _cts.Token.Register(() => tcs.TrySetCanceled());
 
         await tcs.Task;
+    }
+
+    void IRecipient<DoorLockStateChanged>.Receive(DoorLockStateChanged message)
+    {
+        DispatcherQueue.TryEnqueue(delegate
+        {
+            IsEnabled = message.IsLocked;
+        });
     }
 }

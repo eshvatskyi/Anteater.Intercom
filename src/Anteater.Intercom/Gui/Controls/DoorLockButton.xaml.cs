@@ -1,6 +1,6 @@
 using System;
-using Anteater.Intercom.Services.Audio;
-using Anteater.Pipe;
+using Anteater.Intercom.Services.ReversChannel;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -14,17 +14,17 @@ public partial class DoorLockButton : Button
         .Register(nameof(IsDoorLocked), typeof(bool), typeof(DoorLockButton), PropertyMetadata
         .Create(false));
 
-    private readonly ReversAudioService _backChannelConnection;
-    private readonly IEventPublisher _pipe;
+    private readonly IDoorLockService _doorLock;
+    private readonly IMessenger _messenger;
 
     public DoorLockButton()
     {
-        _backChannelConnection = App.ServiceProvider.GetRequiredService<ReversAudioService>();
-        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+        _doorLock = App.Services.GetRequiredService<IDoorLockService>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
 
         Loaded += OnLoaded;
 
-        InitializeComponent();        
+        InitializeComponent();
     }
 
     void OnLoaded(object sender, RoutedEventArgs e)
@@ -46,13 +46,16 @@ public partial class DoorLockButton : Button
         {
             IsDoorLocked = false;
 
-            _pipe.Publish(new DoorLockStateChanged(false));
+            _messenger.Send(new DoorLockStateChanged(false));
 
-            _backChannelConnection.UnlockDoorAsync().ContinueWith(_ =>
+            _doorLock.UnlockDoorAsync().ContinueWith(_ =>
             {
-                DispatcherQueue.TryEnqueue(() => IsDoorLocked = true);
+                DispatcherQueue.TryEnqueue(delegate
+                {
+                    IsDoorLocked = true;
+                });
 
-                _pipe.Publish(new DoorLockStateChanged(true));
+                _messenger.Send(new DoorLockStateChanged(true));
             });
         }
     }

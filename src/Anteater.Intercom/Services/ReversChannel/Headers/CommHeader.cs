@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Anteater.Intercom.Services.Audio.Headers;
+namespace Anteater.Intercom.Services.ReversChannel.Headers;
 
 public class CommHeader
 {

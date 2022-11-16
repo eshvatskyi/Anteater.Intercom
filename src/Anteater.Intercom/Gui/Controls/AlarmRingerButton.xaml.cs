@@ -3,7 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services.Events;
-using Anteater.Pipe;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -12,45 +12,26 @@ using NAudio.Wave;
 
 namespace Anteater.Intercom.Gui.Controls;
 
-public partial class AlarmRingerButton : Button
+public partial class AlarmRingerButton : Button,
+    IRecipient<AlarmEvent>,
+    IRecipient<AlarmStateChanged>,
+    IRecipient<CallStateChanged>,
+    IRecipient<DoorLockStateChanged>
 {
     public static readonly DependencyProperty IsActiveProperty = DependencyProperty
         .Register(nameof(IsActive), typeof(bool), typeof(AlarmRingerButton), PropertyMetadata
         .Create(false, (o, _) => (o as AlarmRingerButton)?.OnIsActiveChanged()));
 
-    private readonly IEventPublisher _pipe;
+    private readonly IMessenger _messenger;
     private readonly WaveOut _waveOut;
 
     private CancellationTokenSource _cts;
 
     public AlarmRingerButton()
     {
-        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
 
-        var alarmEvent = _pipe.Subscribe<AlarmEvent>(x => x
-            .Where(x => x.Status && x.Type == AlarmEvent.EventType.SensorAlarm)
-            .Do(x => DispatcherQueue.TryEnqueue(delegate { IsActive = true; })));
-
-        var alarmStateChanged = _pipe.Subscribe<AlarmStateChanged>(x =>
-        {
-            _waveOut.Volume = x.IsMuted ? 0 : 1;
-
-            return Task.CompletedTask;
-        });
-
-        var callStateChanged = _pipe.Subscribe<CallStateChanged>(x =>
-        {
-            DispatcherQueue.TryEnqueue(delegate { IsActive = false; });
-
-            return Task.CompletedTask;
-        });
-
-        var doorLockStateChanged = _pipe.Subscribe<DoorLockStateChanged>(x =>
-        {
-            DispatcherQueue.TryEnqueue(delegate { IsActive = false; });
-
-            return Task.CompletedTask;
-        });
+        _messenger.RegisterAll(this);
 
         _waveOut = new WaveOut();
 
@@ -61,12 +42,9 @@ public partial class AlarmRingerButton : Button
         void UnloadEventHandler()
         {
             _cts?.Cancel();
-            alarmEvent.Dispose();
-            alarmStateChanged.Dispose();
-            callStateChanged.Dispose();
-            doorLockStateChanged.Dispose();
             _waveOut.Stop();
             _waveOut.Dispose();
+            _messenger.UnregisterAll(this);
         };
 
         Unloaded += (_, _) => UnloadEventHandler();
@@ -114,5 +92,37 @@ public partial class AlarmRingerButton : Button
         e.Handled = false;
 
         IsActive = false;
+    }
+
+    void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
+    {
+        if (message.Status && message.Type == AlarmEvent.EventType.SensorAlarm)
+        {
+            DispatcherQueue.TryEnqueue(delegate
+            {
+                IsActive = true;
+            });
+        }
+    }
+
+    void IRecipient<AlarmStateChanged>.Receive(AlarmStateChanged message)
+    {
+        _waveOut.Volume = message.IsMuted ? 0 : 1;
+    }
+
+    void IRecipient<CallStateChanged>.Receive(CallStateChanged message)
+    {
+        DispatcherQueue.TryEnqueue(delegate
+        {
+            IsActive = false;
+        });
+    }
+
+    void IRecipient<DoorLockStateChanged>.Receive(DoorLockStateChanged message)
+    {
+        DispatcherQueue.TryEnqueue(delegate
+        {
+            IsActive = false;
+        });
     }
 }

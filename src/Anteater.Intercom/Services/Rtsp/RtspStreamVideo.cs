@@ -5,7 +5,7 @@ namespace Anteater.Intercom.Services.Rtsp;
 
 public unsafe class RtspStreamVideo : RtspStream
 {
-    private SwsContext* _decodeContext;
+    private SwsContext* _swsContext;
 
     private bool _disposedValue;
 
@@ -23,14 +23,14 @@ public unsafe class RtspStreamVideo : RtspStream
         decodedFrame->height = frame->height;
         decodedFrame->format = (int)AVPixelFormat.AV_PIX_FMT_BGRA;
 
-        if (_decodeContext is null)
+        if (_swsContext is null)
         {
             Format = new RtspStreamVideoFormat(decodedFrame->width, decodedFrame->height, (AVPixelFormat)decodedFrame->format);
 
-            _decodeContext = ffmpeg.sws_getContext(frame->width, frame->height, (AVPixelFormat)frame->format, decodedFrame->width, decodedFrame->height, (AVPixelFormat)decodedFrame->format, 0, null, null, null);
+            _swsContext = ffmpeg.sws_getContext(frame->width, frame->height, (AVPixelFormat)frame->format, decodedFrame->width, decodedFrame->height, (AVPixelFormat)decodedFrame->format, 0, null, null, null);
         }
 
-        if (ffmpeg.sws_scale_frame(_decodeContext, decodedFrame, frame) <= 0)
+        if (ffmpeg.sws_scale_frame(_swsContext, decodedFrame, frame) <= 0)
         {
             return;
         }
@@ -53,9 +53,9 @@ public unsafe class RtspStreamVideo : RtspStream
         {
             if (disposing)
             {
-                if (_decodeContext is not null)
+                if (_swsContext is not null)
                 {
-                    ffmpeg.sws_freeContext(_decodeContext);
+                    ffmpeg.sws_freeContext(_swsContext);
                 }
             }
 

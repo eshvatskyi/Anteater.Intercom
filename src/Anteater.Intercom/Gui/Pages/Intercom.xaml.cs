@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services.Events;
-using Anteater.Pipe;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -11,13 +11,15 @@ using Microsoft.UI.Xaml.Navigation;
 
 namespace Anteater.Intercom.Gui.Pages;
 
-sealed partial class Intercom : Page
+sealed partial class Intercom : Page,
+    IRecipient<AlarmEvent>,
+    IRecipient<CallStateChanged>
 {
     public static readonly DependencyProperty IsOverlayVisibleProperty = DependencyProperty
         .Register(nameof(IsOverlayVisible), typeof(bool), typeof(Intercom), PropertyMetadata
         .Create(false));
 
-    private readonly IPipe _pipe;
+    private readonly IMessenger _messenger;
 
     private Task _commandTask = Task.CompletedTask;
     private CancellationTokenSource _cts;
@@ -25,40 +27,16 @@ sealed partial class Intercom : Page
 
     public Intercom()
     {
-        _pipe = App.ServiceProvider.GetRequiredService<IPipe>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
 
-        var alarmEvents = _pipe.Subscribe<AlarmEvent>(x => x.Where(x => x.Status && x.Type switch
-        {
-            AlarmEvent.EventType.MotionDetection => true,
-            AlarmEvent.EventType.SensorAlarm => true,
-            _ => false
-        }).Do(x => DispatcherQueue.TryEnqueue(delegate
-        {
-            IsOverlayVisible = true;
-            ApplyOverlayChanges();
-        })));
-
-        var callStateChanged = _pipe.Subscribe<CallStateChanged>(x =>
-        {
-            if (_overlayLocked = x.IsCalling)
-            {
-                _cts?.Cancel();
-            }
-            else
-            {
-                DispatcherQueue.TryEnqueue(ApplyOverlayChanges);
-            }
-
-            return Task.CompletedTask;
-        });
+        _messenger.RegisterAll(this);
 
         InitializeComponent();
 
         void UnloadEventHandler()
         {
             _cts?.Cancel();
-            alarmEvents.Dispose();
-            callStateChanged.Dispose();
+            _messenger.UnregisterAll(this);
         };
 
         Unloaded += (_, _) => UnloadEventHandler();
@@ -107,11 +85,15 @@ sealed partial class Intercom : Page
 
         if (IsOverlayVisible)
         {
-            _commandTask = _commandTask.ContinueWith(_ => _pipe.ExecuteAsync(new ChangeVideoState(false)));
+            _commandTask = _commandTask.ContinueWith(delegate
+            {
+                _messenger.Send(new ChangeVideoState(false));
+            });
 
-            _ = Task.Delay(TimeSpan.FromSeconds(15), _cts.Token).ContinueWith(_ =>
+            _ = Task.Delay(TimeSpan.FromSeconds(15), _cts.Token).ContinueWith(delegate
             {
                 _cts = null;
+
                 DispatcherQueue.TryEnqueue(delegate
                 {
                     IsOverlayVisible = false;
@@ -121,10 +103,14 @@ sealed partial class Intercom : Page
         }
         else
         {
-            _ = Task.Delay(TimeSpan.FromSeconds(30), _cts.Token).ContinueWith(_ =>
+            _ = Task.Delay(TimeSpan.FromSeconds(30), _cts.Token).ContinueWith(delegate
             {
                 _cts = null;
-                _commandTask = _commandTask.ContinueWith(_ => _pipe.ExecuteAsync(new ChangeVideoState(true)));
+
+                _commandTask = _commandTask.ContinueWith(delegate
+                {
+                    _messenger.Send(new ChangeVideoState(true));
+                });
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
         }
     }
@@ -132,5 +118,34 @@ sealed partial class Intercom : Page
     private void Button_Tapped(object sender, TappedRoutedEventArgs e)
     {
         MainWindow.Instance.NavigateToType(typeof(Settings));
+    }
+
+    void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
+    {
+        if (message.Status && message.Type switch
+        {
+            AlarmEvent.EventType.MotionDetection => true,
+            AlarmEvent.EventType.SensorAlarm => true,
+            _ => false
+        })
+        {
+            DispatcherQueue.TryEnqueue(delegate
+            {
+                IsOverlayVisible = true;
+                ApplyOverlayChanges();
+            });
+        }
+    }
+
+    void IRecipient<CallStateChanged>.Receive(CallStateChanged message)
+    {
+        if (_overlayLocked = message.IsCalling)
+        {
+            _cts?.Cancel();
+        }
+        else
+        {
+            DispatcherQueue.TryEnqueue(ApplyOverlayChanges);
+        }
     }
 }

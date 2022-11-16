@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Anteater.Intercom.Services.Audio.Headers;
+namespace Anteater.Intercom.Services.ReversChannel.Headers;
 
 public class AcceptHeader
 {

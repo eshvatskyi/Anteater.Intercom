@@ -1,4 +1,4 @@
-global using Anteater.Intercom.Gui.Communication;
+global using Anteater.Intercom.Gui.Messages;
 global using Anteater.Intercom.Gui.Helpers;
 
 using System;
@@ -6,8 +6,9 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services;
-using Anteater.Intercom.Services.Audio;
+using Anteater.Intercom.Services.ReversChannel;
 using Anteater.Intercom.Services.Events;
+using CommunityToolkit.Mvvm.Messaging;
 using FFmpeg.AutoGen.Bindings.DynamicallyLoaded;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,7 @@ sealed partial class App : Application
     private const string UniqueEventName = "{D2F9052F-CD44-44B7-8394-C91D8B0708F1}";
     private const string UniqueMutexName = "{DCF63EF4-F686-47C0-B5C8-36F94F35FE73}";
 
-    public static IServiceProvider ServiceProvider { get; private set; }
+    public static IServiceProvider Services { get; private set; }
 
     private EventWaitHandle _eventWaitHandle;
     private Mutex _mutex;
@@ -34,7 +35,7 @@ sealed partial class App : Application
 
         ConfigureServices(services);
 
-        ServiceProvider = services.BuildServiceProvider();
+        Services = services.BuildServiceProvider();
 
         InitializeComponent();
     }
@@ -53,11 +54,14 @@ sealed partial class App : Application
 
         services.Configure<ConnectionSettings>(config);
 
-        services.AddAnteaterPipe();
+        services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
 
         services.AddSingleton<UpdaterService>();
         services.AddSingleton<AlarmEventsService>();
-        services.AddSingleton<ReversAudioService>();
+
+        services.AddSingleton<ReversChannelService>();
+        services.AddSingleton<IReversAudioService>(x => x.GetRequiredService<ReversChannelService>());
+        services.AddSingleton<IDoorLockService>(x => x.GetRequiredService<ReversChannelService>());
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -86,8 +90,8 @@ sealed partial class App : Application
                 }
             }, cts.Token);
 
-            var updaterService = ServiceProvider.GetRequiredService<UpdaterService>();
-            var alarmService = ServiceProvider.GetRequiredService<AlarmEventsService>();
+            var updaterService = Services.GetRequiredService<UpdaterService>();
+            var alarmService = Services.GetRequiredService<AlarmEventsService>();
 
             updaterService.Start();
             alarmService.Start();

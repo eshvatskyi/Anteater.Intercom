@@ -1,6 +1,5 @@
 using System;
-using System.Threading.Tasks;
-using Anteater.Pipe;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -8,40 +7,24 @@ using Microsoft.UI.Xaml.Input;
 
 namespace Anteater.Intercom.Gui.Controls;
 
-public partial class SoundMuteButton : Button
+public partial class SoundMuteButton : Button,
+    IRecipient<CallStateChanged>
 {
     public static readonly DependencyProperty IsSoundMutedProperty = DependencyProperty
         .Register(nameof(IsSoundMuted), typeof(bool), typeof(SoundMuteButton), PropertyMetadata
         .Create(false));
 
-    private readonly IEventPublisher _pipe;
+    private readonly IMessenger _messenger;
 
     public SoundMuteButton()
     {
-        _pipe = App.ServiceProvider.GetRequiredService<IEventPublisher>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
 
-        var callStateChanged = _pipe.Subscribe<CallStateChanged>(x =>
-        {
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                IsEnabled = !x.IsCalling;
-                _pipe.Publish(new SoundStateChanged(x.IsCalling ? false : IsSoundMuted));
-            });
-
-            return Task.CompletedTask;
-        });
+        _messenger.Register(this);
 
         Loaded += OnLoaded;
 
         InitializeComponent();
-
-        void UnloadEventHandler()
-        {
-            callStateChanged.Dispose();
-        };
-
-        Unloaded += (_, _) => UnloadEventHandler();
-        MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
     }
 
     public bool IsSoundMuted
@@ -54,7 +37,7 @@ public partial class SoundMuteButton : Button
     {
         IsSoundMuted = true;
 
-        _pipe.Publish(new SoundStateChanged(IsSoundMuted));
+        _messenger.Send(new SoundStateChanged(IsSoundMuted));
     }
 
     protected override void OnTapped(TappedRoutedEventArgs e)
@@ -63,6 +46,16 @@ public partial class SoundMuteButton : Button
 
         IsSoundMuted = !IsSoundMuted;
 
-        _pipe.Publish(new SoundStateChanged(IsSoundMuted));
+        _messenger.Send(new SoundStateChanged(IsSoundMuted));
+    }
+
+    void IRecipient<CallStateChanged>.Receive(CallStateChanged message)
+    {
+        DispatcherQueue.TryEnqueue(delegate
+        {
+            IsEnabled = !message.IsCalling;
+
+            _messenger.Send(new SoundStateChanged(message.IsCalling ? false : IsSoundMuted));
+        });
     }
 }

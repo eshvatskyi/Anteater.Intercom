@@ -6,7 +6,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Anteater.Pipe;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom.Services.Events;
@@ -14,18 +14,19 @@ namespace Anteater.Intercom.Services.Events;
 public class AlarmEventsService : BackgroundService
 {
     static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
+    static readonly TimeSpan ReConnectTimeout = TimeSpan.FromMinutes(30);
     static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(60);
     static readonly TimeSpan ContinueDelay = TimeSpan.FromSeconds(5);
 
-    private readonly IEventPublisher _pipe;
+    private readonly IMessenger _messenger;
     private readonly HttpClient _client;
 
     private ConnectionSettings _settings;
     private CancellationTokenSource _cts;
 
-    public AlarmEventsService(IOptionsMonitor<ConnectionSettings> connectionSettings, IEventPublisher pipe)
+    public AlarmEventsService(IMessenger messenger, IOptionsMonitor<ConnectionSettings> connectionSettings)
     {
-        _pipe = pipe;
+        _messenger = messenger;
 
         _client = new HttpClient()
         {
@@ -55,6 +56,8 @@ public class AlarmEventsService : BackgroundService
                 try
                 {
                     _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+                    _cts.CancelAfter(ReConnectTimeout);
 
                     var uriBuilder = new UriBuilder
                     {
@@ -131,7 +134,7 @@ public class AlarmEventsService : BackgroundService
         {
             if (AlarmEvent.TryParse(Encoding.ASCII.GetString(line), out var alarmEvent))
             {
-                _pipe.Publish(alarmEvent);
+                _messenger.Send(alarmEvent);
             }
         }
 

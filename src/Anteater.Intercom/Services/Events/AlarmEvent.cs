@@ -1,11 +1,10 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Anteater.Pipe;
 
 namespace Anteater.Intercom.Services.Events;
 
-public class AlarmEvent : IEvent
+public class AlarmEvent
 {
     private static readonly Regex EventRegEx = new("""^(?<date>\d\d\d\d-\d\d-\d\d);(?<time>\d\d:\d\d:\d\d);(?<type>\w+);(?<status>[01]);(?<numbers>\d+(,\d+)*)$""", RegexOptions.ExplicitCapture | RegexOptions.Compiled);
 

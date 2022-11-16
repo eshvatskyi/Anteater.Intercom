@@ -1,9 +1,8 @@
 using System;
 using System.Runtime.InteropServices.WindowsRuntime;
-using System.Threading.Tasks;
 using Anteater.Intercom.Services;
 using Anteater.Intercom.Services.Rtsp;
-using Anteater.Pipe;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.UI.Xaml.Controls;
@@ -12,9 +11,11 @@ using NAudio.Wave;
 
 namespace Anteater.Intercom.Gui.Controls;
 
-public partial class VideoPlayer : Grid
+public partial class VideoPlayer : Grid,
+    IRecipient<ChangeVideoState>,
+    IRecipient<SoundStateChanged>
 {
-    private readonly IPipe _pipe;
+    private readonly IMessenger _messenger;
     private readonly WaveOut _waveOut;
     private readonly RtspStreamReader _rtspStream;
 
@@ -22,9 +23,11 @@ public partial class VideoPlayer : Grid
 
     public VideoPlayer()
     {
-        _pipe = App.ServiceProvider.GetService<IPipe>();
+        _messenger = App.Services.GetService<IMessenger>();
 
-        var connectionSettings = App.ServiceProvider.GetService<IOptionsMonitor<ConnectionSettings>>();
+        _messenger.RegisterAll(this);
+
+        var connectionSettings = App.Services.GetService<IOptionsMonitor<ConnectionSettings>>();
 
         _settings = connectionSettings.CurrentValue;
 
@@ -40,9 +43,6 @@ public partial class VideoPlayer : Grid
             Connect();
         });
 
-        var videoState = _pipe.HandleAsync<ChangeVideoState>(OnChangeVideoState);
-        var soundStateChanged = _pipe.Subscribe<SoundStateChanged>(OnSoundStateChanged);
-
         _waveOut = new WaveOut();
         _rtspStream = new RtspStreamReader();
 
@@ -51,58 +51,14 @@ public partial class VideoPlayer : Grid
         void UnloadEventHandler()
         {
             settingsState.Dispose();
-            videoState.Dispose();
-            soundStateChanged.Dispose();
             _rtspStream.Dispose();
             _waveOut.Stop();
             _waveOut.Dispose();
+            _messenger.UnregisterAll(this);
         };
 
         Unloaded += (_, _) => UnloadEventHandler();
         MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
-    }
-
-    Task OnChangeVideoState(ChangeVideoState command) => Task.Run(() =>
-    {
-        DispatcherQueue.TryEnqueue(delegate
-        {
-            Visibility = command.IsPaused ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
-        });
-
-        if (command.IsPaused)
-        {
-            if (!_rtspStream.IsStopped)
-            {
-                _rtspStream.Stop();
-            }
-        }
-        else
-        {
-            if (_rtspStream.IsStopped)
-            {
-                _rtspStream.Start();
-            }
-        }
-    });
-
-    Task OnSoundStateChanged(SoundStateChanged @event)
-    {
-        if (@event.IsMuted)
-        {
-            if (_waveOut.PlaybackState == PlaybackState.Playing)
-            {
-                _waveOut.Pause();
-            }
-        }
-        else
-        {
-            if (_waveOut.PlaybackState != PlaybackState.Playing)
-            {
-                _waveOut.Play();
-            }
-        }
-
-        return Task.CompletedTask;
     }
 
     public void Connect()
@@ -172,5 +128,46 @@ public partial class VideoPlayer : Grid
 
         _waveOut.Init(waveProvider);
         _waveOut.Play();
+    }
+
+    void IRecipient<ChangeVideoState>.Receive(ChangeVideoState message)
+    {
+        DispatcherQueue.TryEnqueue(delegate
+        {
+            Visibility = message.IsPaused ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+        });
+
+        if (message.IsPaused)
+        {
+            if (!_rtspStream.IsStopped)
+            {
+                _rtspStream.Stop();
+            }
+        }
+        else
+        {
+            if (_rtspStream.IsStopped)
+            {
+                _rtspStream.Start();
+            }
+        }
+    }
+
+    void IRecipient<SoundStateChanged>.Receive(SoundStateChanged message)
+    {
+        if (message.IsMuted)
+        {
+            if (_waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                _waveOut.Pause();
+            }
+        }
+        else
+        {
+            if (_waveOut.PlaybackState != PlaybackState.Playing)
+            {
+                _waveOut.Play();
+            }
+        }
     }
 }

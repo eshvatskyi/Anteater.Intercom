@@ -1,18 +1,18 @@
 using System;
 using System.Linq;
-using Anteater.Intercom.Services.Audio.Headers;
+using Anteater.Intercom.Services.ReversChannel.Headers;
 using NAudio.Codecs;
 
-namespace Anteater.Intercom.Services.Audio;
+namespace Anteater.Intercom.Services.ReversChannel;
 
-public class ReversAudioPacketFactory
+public class AudioPacketFactory
 {
     private readonly CommHeader _tcpCommHeader;
     private readonly HvFrameHeader _tcpHvFrameHeader;
     private readonly ExtFrameAudioHeader _tcpExtFrameAudioHeader;
     private readonly Func<short, byte> _encoder;
 
-    public ReversAudioPacketFactory(int encodeType, int samples, int channels)
+    public AudioPacketFactory(int encodeType, int samples, int channels)
     {
         _encoder = encodeType switch
         {
