@@ -4,7 +4,7 @@ namespace Anteater.Intercom.Services.ReversChannel.Headers;
 
 public class ExtFrameAudioHeader
 {
-    private static readonly int HeaderLength = 32;
+    public static readonly int HeaderLength = 32;
 
     public int StartFlag { get; set; }
 
@@ -18,18 +18,13 @@ public class ExtFrameAudioHeader
 
     public ExtFrameAudio FrameAudio { get; set; }
 
-    public byte[] ToBytes()
+    public void Write(BinaryWriter writer)
     {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
         writer.Write(StartFlag);
         writer.Write(Ver);
         writer.Write(Leight);
-        writer.Write(FrameAudio.ToBytes());
+        FrameAudio.Write(writer);
         writer.Write(Timestamp);
         writer.Write(EndFlag);
-
-        return stream.ToArray();
     }
 }

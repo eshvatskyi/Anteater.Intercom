@@ -1,29 +1,21 @@
 using System;
-using System.Linq;
+using System.IO;
 using Anteater.Intercom.Services.ReversChannel.Headers;
-using NAudio.Codecs;
 
 namespace Anteater.Intercom.Services.ReversChannel;
 
-public class AudioPacketFactory
+public class AudioPacketFactory : IDisposable
 {
     private readonly CommHeader _tcpCommHeader;
     private readonly HvFrameHeader _tcpHvFrameHeader;
     private readonly ExtFrameAudioHeader _tcpExtFrameAudioHeader;
-    private readonly Func<short, byte> _encoder;
+    private readonly BinaryWriter _writer;
 
-    public AudioPacketFactory(int encodeType, int samples, int channels)
+    private bool _disposed;
+
+    public AudioPacketFactory(TalkInfoHeader info, BinaryWriter writer)
     {
-        _encoder = encodeType switch
-        {
-            7 => MuLawEncoder.LinearToMuLawSample,
-            3 => ALawEncoder.LinearToALawSample,
-
-            // TODO: need to be replaced with real encoder
-            _ => Convert.ToByte,
-        };
-
-        var audioSamples = samples / 8000 * 320;
+        var audioSamples = info.AudioSamples / 8000 * BufferSize;
 
         _tcpCommHeader = new CommHeader
         {
@@ -48,28 +40,50 @@ public class AudioPacketFactory
             Ver = 16,
             FrameAudio = new ExtFrameAudio
             {
-                AudioEncodeType = (short)encodeType,
-                AudioChannels = (short)channels,
+                AudioEncodeType = (short)info.AudioEncodeType,
+                AudioChannels = (short)info.AudioChannels,
                 AudioBits = 16,
-                AudioSamples = samples,
+                AudioSamples = info.AudioSamples,
                 AudioBitrate = 16000
             }
         };
+
+        _writer = writer;
     }
 
-    public byte[] Create(short[] data)
+    public int BufferSize => 320;
+
+    public void Write(ReadOnlySpan<byte> data)
     {
         try
         {
-            return _tcpCommHeader.ToBytes()
-                .Concat(_tcpHvFrameHeader.ToBytes())
-                .Concat(_tcpExtFrameAudioHeader.ToBytes())
-                .Concat(data.Select(_encoder).ToArray())
-                .ToArray();
+            _tcpCommHeader.Write(_writer);
+            _tcpHvFrameHeader.Write(_writer);
+            _tcpExtFrameAudioHeader.Write(_writer);
+            _writer.Write(data);
         }
         finally
         {
             _tcpExtFrameAudioHeader.Timestamp++;
         }
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _writer?.Dispose();
+            }
+
+            _disposed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

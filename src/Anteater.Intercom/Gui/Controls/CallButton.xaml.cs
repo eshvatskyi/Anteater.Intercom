@@ -1,14 +1,15 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Alanta.Client.Media.Dsp.WebRtc;
 using Anteater.Intercom.Services.ReversChannel;
 using CommunityToolkit.Mvvm.Messaging;
+using CSCore;
+using CSCore.SoundIn;
+using FFmpeg.AutoGen.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using NAudio.Wave;
 
 namespace Anteater.Intercom.Gui.Controls;
 
@@ -53,20 +54,27 @@ public partial class CallButton : Button,
     {
         e.Handled = false;
 
-        IsCallStarted = !IsCallStarted;
+        var isCallStarted = IsCallStarted = !IsCallStarted;
 
-        _messenger.Send(new CallStateChanged(IsCallStarted));
-
-        if (IsCallStarted)
+        _ = Task.Run(async () =>
         {
-            _cts = new CancellationTokenSource();
+            _messenger.Send(new CallStateChanged(isCallStarted));
 
-            Task.Run(StartCallAsync);
-        }
-        else
-        {
-            _cts?.Cancel();
-        }
+            if (isCallStarted)
+            {
+                _cts = new CancellationTokenSource();
+
+                try
+                {
+                    await StartCallAsync();
+                }
+                catch { }
+            }
+            else
+            {
+                _cts?.Cancel();
+            }
+        });
     }
 
     async Task StartCallAsync()
@@ -75,39 +83,22 @@ public partial class CallButton : Button,
 
         if (!_reversAudio.IsOpen)
         {
-            await _reversAudio.ConnectAsync();
+            await _reversAudio.ConnectAsync(AVSampleFormat.AV_SAMPLE_FMT_S16, 44100, 1);
         }
 
-        var echoCanceller = new WebRtcFilter(1000, 500, new(), new(), true, false, false);
+        var waveIn = new WaveIn(new WaveFormat(44100, 16, 1));
 
-        var capture = new WasapiLoopbackCapture();
-        capture.DataAvailable += (_, args) => echoCanceller.RegisterFramePlayed(args.Buffer);
+        waveIn.Initialize();
 
-        var waveIn = new WaveInEvent
+        waveIn.DataAvailable += (_, args) =>
         {
-            WaveFormat = new WaveFormat(8000, 1),
-            BufferMilliseconds = 10
-        };
-
-        waveIn.DataAvailable += async (_, args) =>
-        {
-            echoCanceller.Write(args.Buffer);
-
             try
             {
-                bool moreFrames;
-                do
-                {
-                    var frameBuffer = new short[320];
-                    if (echoCanceller.Read(frameBuffer, out moreFrames))
-                    {
-                        await _reversAudio.SendAsync(frameBuffer);
-                    }
-                } while (moreFrames);
+                _reversAudio.SendAsync(args.Data);
             }
             catch
             {
-                _cts.Cancel();
+                _cts?.Cancel();
             }
         };
 
@@ -125,15 +116,11 @@ public partial class CallButton : Button,
                 _reversAudio.Disconnect();
             }
 
-            capture.StopRecording();
-            capture.Dispose();
-
-            waveIn.StopRecording();
+            waveIn.Stop();
             waveIn.Dispose();
         });
 
-        capture.StartRecording();
-        waveIn.StartRecording();
+        waveIn.Start();
 
         var tcs = new TaskCompletionSource();
 

@@ -4,7 +4,7 @@ namespace Anteater.Intercom.Services.ReversChannel.Headers;
 
 public class HvFrameHeader
 {
-    private static readonly int HeaderLength = 12;
+    public static readonly int HeaderLength = 12;
 
     public short ZeroFlag { get; set; }
 
@@ -16,17 +16,12 @@ public class HvFrameHeader
 
     public int Timestamp { get; set; }
 
-    public byte[] ToBytes()
+    public void Write(BinaryWriter writer)
     {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
         writer.Write(ZeroFlag);
         writer.Write(OneFlag);
         writer.Write(SteamFlag);
         writer.Write(BufferSize);
         writer.Write(Timestamp);
-
-        return stream.ToArray();
     }
 }

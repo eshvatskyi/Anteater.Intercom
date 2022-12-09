@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Anteater.Intercom.Services.ReversChannel;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,10 +47,16 @@ public partial class DoorLockButton : Button
         {
             IsDoorLocked = false;
 
-            _messenger.Send(new DoorLockStateChanged(false));
-
-            _doorLock.UnlockDoorAsync().ContinueWith(_ =>
+            _ = Task.Run(async () =>
             {
+                _messenger.Send(new DoorLockStateChanged(false));
+
+                try
+                {
+                    await _doorLock.UnlockDoorAsync();
+                }
+                catch { }
+
                 DispatcherQueue.TryEnqueue(delegate
                 {
                     IsDoorLocked = true;

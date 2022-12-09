@@ -7,8 +7,6 @@ public unsafe abstract class RtspStream : IDisposable
 {
     public delegate void FrameDecodedEventHandler(RtspStream stream, byte[] data);
 
-    public event FrameDecodedEventHandler FrameDecoded;
-
     public readonly AVCodecContext* context;
 
     private bool _disposedValue;
@@ -23,10 +21,10 @@ public unsafe abstract class RtspStream : IDisposable
 
             ffmpeg.avcodec_parameters_to_context(context, stream->codecpar);
             ffmpeg.avcodec_open2(context, codec, null);
-
-            ffmpeg.av_free(codec);
         }
     }
+
+    public event FrameDecodedEventHandler FrameDecoded;
 
     public abstract AVMediaType Type { get; }
 

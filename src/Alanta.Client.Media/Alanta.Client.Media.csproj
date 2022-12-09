@@ -1,9 +1,0 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <TargetFramework>net7</TargetFramework>
-    <Authors>smithkl42</Authors>
-    <RepositoryUrl>https://github.com/smithkl42/AlantaMedia</RepositoryUrl>    
-  </PropertyGroup>
-
-</Project>

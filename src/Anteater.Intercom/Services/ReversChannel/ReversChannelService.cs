@@ -1,12 +1,14 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using Anteater.Intercom.Services.ReversChannel.Headers;
 using Anteater.Intercom.Services.Events;
+using Anteater.Intercom.Services.ReversChannel.Headers;
 using CommunityToolkit.Mvvm.Messaging;
+using FFmpeg.AutoGen.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom.Services.ReversChannel;
@@ -20,7 +22,10 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
 
     private TcpClient _client;
     private NetworkStream _stream;
+    private BinaryWriter _writer;
     private AudioPacketFactory _audioPacketFactory;
+    private QueuedBuffer _buffer;
+    private AudioEncoder _encoder;
 
     public ReversChannelService(IMessenger messenger, IOptionsMonitor<ConnectionSettings> connectionSettings)
     {
@@ -43,33 +48,47 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
 
     public bool IsOpen { get; private set; }
 
-    public int AudioSamples { get; private set; }
-
-    public int AudioChannels { get; private set; }
-
-    public int AudioBits { get; private set; }
-
-    public async Task ConnectAsync()
+    public async Task ConnectAsync(AVSampleFormat format, int sampleRate, int channels)
     {
         try
         {
             _isDuplexMode = true;
 
+            var infoHeader = await OpenAsync();
+
+            _audioPacketFactory = new AudioPacketFactory(infoHeader, _writer);
+
+            _buffer = new QueuedBuffer(_audioPacketFactory.BufferSize * 3);
+
+            _encoder = GetEncoder(infoHeader, format, sampleRate, channels);
+        }
+        catch
+        {
+            Disconnect();
+            throw;
+        }
+    }
+
+    async Task<TalkInfoHeader> OpenAsync()
+    {
+        try
+        {
             _client = new TcpClient();
             _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
             await _client.ConnectAsync(_settings.Host, _settings.DataPort);
 
             _stream = _client.GetStream();
+            _writer = new BinaryWriter(_stream);
 
-            await _stream.WriteAsync(new AcceptHeader
+            new AcceptHeader
             {
                 Username = _settings.Username,
                 Password = _settings.Password,
                 Flag = 17767,
                 SocketType = 2,
                 Misc = 0
-            });
+            }.Write(_writer);
 
             await _stream.FlushAsync();
 
@@ -82,15 +101,9 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
                     throw new InvalidOperationException("Failed to open audio backchannel.");
             }
 
-            var tcpInfoHeader = await TalkInfoHeader.ReadAsync(_stream);
-
-            AudioSamples = tcpInfoHeader.AudioSamples;
-            AudioChannels = tcpInfoHeader.AudioChannels;
-            AudioBits = tcpInfoHeader.AudioBits;
-
-            _audioPacketFactory = new AudioPacketFactory(tcpInfoHeader.AudioEncodeType, tcpInfoHeader.AudioSamples, tcpInfoHeader.AudioChannels);
-
             IsOpen = true;
+
+            return await TalkInfoHeader.ReadAsync(_stream);
         }
         catch
         {
@@ -99,20 +112,53 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
         }
     }
 
-    public async Task SendAsync(short[] data)
+    static AudioEncoder GetEncoder(TalkInfoHeader info, AVSampleFormat format, int sampleRate, int channels)
+    {
+        var codecId = info.AudioEncodeType switch
+        {
+            7 => AVCodecID.AV_CODEC_ID_PCM_MULAW,
+            3 => AVCodecID.AV_CODEC_ID_PCM_ALAW,
+            1 => AVCodecID.AV_CODEC_ID_ADPCM_G726,
+            _ => throw new InvalidOperationException("Unknown encoding type."),
+        };
+
+        return new AudioEncoder(codecId, info.AudioSamples, info.AudioChannels, format, sampleRate, channels);
+    }
+
+    public async Task SendAsync(byte[] data)
     {
         try
         {
             if (IsOpen)
             {
-                await _stream.WriteAsync(_audioPacketFactory.Create(data));
-                await _stream.FlushAsync();
+                await Task.Run(async delegate
+                {
+                    var encodedData = _encoder.Encode(data);
+
+                    SendEncodedData(encodedData);
+
+                    await _stream.FlushAsync();
+                });
             }
         }
         catch
         {
             Disconnect();
             throw;
+        }
+    }
+
+    void SendEncodedData(byte[] data)
+    {
+        _buffer.Write(data, 0, data.Length);
+
+        Span<byte> frameData = stackalloc byte[_audioPacketFactory.BufferSize];
+
+        while (_buffer.Length >= _audioPacketFactory.BufferSize)
+        {
+            _buffer.Read(frameData, 0, _audioPacketFactory.BufferSize);
+
+            _audioPacketFactory.Write(frameData);
         }
     }
 
@@ -152,7 +198,7 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
 
         if (isDuplexMode)
         {
-            _ = ConnectAsync();
+            _ = OpenAsync();
         }
 
         return (true, "");
@@ -183,13 +229,14 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
     {
         IsOpen = false;
         _client?.Dispose();
+        _audioPacketFactory?.Dispose();
     }
 
     async void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
     {
         if (message.Status && message.Type == AlarmEvent.EventType.SensorAlarm && message.Numbers is [1, ..])
         {
-            await ConnectAsync();
+            await OpenAsync();
             _isDuplexMode |= false;
         }
     }

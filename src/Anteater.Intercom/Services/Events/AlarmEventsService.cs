@@ -82,10 +82,7 @@ public class AlarmEventsService : BackgroundService
 
                     await Task.Delay(ContinueDelay, cancellationToken);
                 }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
+                catch (OperationCanceledException) { }
                 catch
                 {
                     await Task.Delay(RetryDelay, cancellationToken);

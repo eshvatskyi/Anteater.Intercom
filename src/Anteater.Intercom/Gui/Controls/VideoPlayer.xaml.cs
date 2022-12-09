@@ -3,23 +3,23 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Anteater.Intercom.Services;
 using Anteater.Intercom.Services.Rtsp;
 using CommunityToolkit.Mvvm.Messaging;
+using CSCore;
+using CSCore.SoundOut;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
-using NAudio.Wave;
 
 namespace Anteater.Intercom.Gui.Controls;
 
-public partial class VideoPlayer : Grid,
-    IRecipient<ChangeVideoState>,
-    IRecipient<SoundStateChanged>
+public partial class VideoPlayer : Grid, IWaveSource, IRecipient<ChangeVideoState>, IRecipient<SoundStateChanged>
 {
     private readonly IMessenger _messenger;
-    private readonly WaveOut _waveOut;
+    private readonly WaveOut _playback;
     private readonly RtspStreamReader _rtspStream;
 
     private ConnectionSettings _settings;
+    private QueuedBuffer _buffer;
 
     public VideoPlayer()
     {
@@ -43,7 +43,7 @@ public partial class VideoPlayer : Grid,
             Connect();
         });
 
-        _waveOut = new WaveOut();
+        _playback = new WaveOut();
         _rtspStream = new RtspStreamReader();
 
         InitializeComponent();
@@ -52,13 +52,35 @@ public partial class VideoPlayer : Grid,
         {
             settingsState.Dispose();
             _rtspStream.Dispose();
-            _waveOut.Stop();
-            _waveOut.Dispose();
+            _playback.Stop();
+            _playback.Dispose();
             _messenger.UnregisterAll(this);
         };
 
         Unloaded += (_, _) => UnloadEventHandler();
         MainWindow.Instance.Closed += (_, _) => UnloadEventHandler();
+    }
+
+    public bool CanSeek { get; } = false;
+
+    public WaveFormat WaveFormat { get; private set; }
+
+    public long Position { get; set; }
+
+    public long Length => _buffer.Length;
+
+    public int Read(byte[] buffer, int offset, int count)
+    {
+        var num = _buffer.Read(buffer, offset, count);
+
+        if (num < count)
+        {
+            buffer.AsSpan().Slice(offset + num, count - num).Clear();
+
+            num = count;
+        }
+
+        return num;
     }
 
     public void Connect()
@@ -106,28 +128,25 @@ public partial class VideoPlayer : Grid,
 
     void InitializeAudio(RtspStreamAudioFormat format)
     {
-        _waveOut.Stop();
+        _playback.Stop();
 
         if (format is null)
         {
             return;
         }
 
-        var waveFormat = new WaveFormat(format.SampleRate, format.Channels);
+        _buffer = new QueuedBuffer(format.SampleRate / 2);
 
-        var waveProvider = new BufferedWaveProvider(waveFormat)
-        {
-            BufferLength = format.SampleRate / 2,
-            DiscardOnBufferOverflow = true
-        };
+        WaveFormat = new WaveFormat(format.SampleRate, 16, format.Channels);
+
+        _playback.Initialize(this);
 
         _rtspStream.AudioFrameDecoded += (_, data) =>
         {
-            waveProvider.AddSamples(data, 0, data.Length);
+            _buffer.Write(data, 0, data.Length);
         };
 
-        _waveOut.Init(waveProvider);
-        _waveOut.Play();
+        _playback.Play();
     }
 
     void IRecipient<ChangeVideoState>.Receive(ChangeVideoState message)
@@ -157,17 +176,19 @@ public partial class VideoPlayer : Grid,
     {
         if (message.IsMuted)
         {
-            if (_waveOut.PlaybackState == PlaybackState.Playing)
+            if (_playback.PlaybackState == PlaybackState.Playing)
             {
-                _waveOut.Pause();
+                _playback.Pause();
             }
         }
         else
         {
-            if (_waveOut.PlaybackState != PlaybackState.Playing)
+            if (_playback.PlaybackState != PlaybackState.Playing)
             {
-                _waveOut.Play();
+                _playback.Play();
             }
         }
     }
+
+    public void Dispose() { }
 }

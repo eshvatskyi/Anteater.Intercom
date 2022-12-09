@@ -1,22 +1,20 @@
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services.Events;
 using CommunityToolkit.Mvvm.Messaging;
+using CSCore;
+using CSCore.Codecs;
+using CSCore.SoundOut;
+using CSCore.Streams;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using NAudio.Wave;
 
 namespace Anteater.Intercom.Gui.Controls;
 
-public partial class AlarmRingerButton : Button,
-    IRecipient<AlarmEvent>,
-    IRecipient<AlarmStateChanged>,
-    IRecipient<CallStateChanged>,
-    IRecipient<DoorLockStateChanged>
+public partial class AlarmRingerButton : Button, IRecipient<AlarmEvent>, IRecipient<AlarmStateChanged>, IRecipient<CallStateChanged>, IRecipient<DoorLockStateChanged>
 {
     public static readonly DependencyProperty IsActiveProperty = DependencyProperty
         .Register(nameof(IsActive), typeof(bool), typeof(AlarmRingerButton), PropertyMetadata
@@ -75,16 +73,17 @@ public partial class AlarmRingerButton : Button,
             DispatcherQueue.TryEnqueue(delegate { IsActive = false; });
         });
 
-        _waveOut.Play();
+        _ = Task.Run(_waveOut.Play);
     }
 
     void OnLoaded(object sender, RoutedEventArgs e)
     {
         IsActive = false;
 
-        var stream = File.OpenRead("Assets/DoorBell.mp3");
-
-        _waveOut.Init(new WaveLoopStream(new Mp3FileReader(stream)));
+        _waveOut.Initialize(new LoopStream(CodecFactory.Instance
+            .GetCodec("Assets/DoorBell.mp3")
+            .ToSampleSource()
+            .ToWaveSource()));
     }
 
     protected override void OnTapped(TappedRoutedEventArgs e)
@@ -92,6 +91,11 @@ public partial class AlarmRingerButton : Button,
         e.Handled = false;
 
         IsActive = false;
+    }
+
+    public int Read(byte[] buffer, int offset, int count)
+    {
+        throw new NotImplementedException();
     }
 
     void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
@@ -107,7 +111,11 @@ public partial class AlarmRingerButton : Button,
 
     void IRecipient<AlarmStateChanged>.Receive(AlarmStateChanged message)
     {
-        _waveOut.Volume = message.IsMuted ? 0 : 1;
+        try
+        {
+            _waveOut.Volume = message.IsMuted ? 0 : 1;
+        }
+        catch { }
     }
 
     void IRecipient<CallStateChanged>.Receive(CallStateChanged message)

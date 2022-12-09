@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using FFmpeg.AutoGen.Abstractions;
 
 namespace Anteater.Intercom.Services.ReversChannel;
 
@@ -6,15 +7,9 @@ public interface IReversAudioService
 {
     bool IsOpen { get; }
 
-    int AudioSamples { get; }
+    Task ConnectAsync(AVSampleFormat format, int sampleRate, int channels);
 
-    int AudioChannels { get; }
-
-    int AudioBits { get; }
-
-    Task ConnectAsync();
-
-    Task SendAsync(short[] data);
+    Task SendAsync(byte[] data);
 
     void Disconnect();
 }

@@ -32,13 +32,9 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.2.221109.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.25231-preview" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="2.0.9" />
-    <PackageReference Include="NAudio" Version="2.1.0" />
+    <PackageReference Include="CSCore" Version="1.2.1.2" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0-*" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Alanta.Client.Media\Alanta.Client.Media.csproj" />
   </ItemGroup>
 
   <ItemGroup>

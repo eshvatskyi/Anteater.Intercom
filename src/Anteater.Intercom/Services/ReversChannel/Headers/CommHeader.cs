@@ -6,7 +6,7 @@ namespace Anteater.Intercom.Services.ReversChannel.Headers;
 
 public class CommHeader
 {
-    private static readonly int HeaderLength = 28;
+    public static readonly int HeaderLength = 28;
 
     public int Flag { get; set; }
 
@@ -22,11 +22,8 @@ public class CommHeader
 
     public int Misc { get; set; }
 
-    public byte[] ToBytes()
+    public void Write(BinaryWriter writer)
     {
-        using var stream = new MemoryStream();
-        using var writer = new BinaryWriter(stream);
-
         writer.Write(Flag);
         writer.Write(Command);
         writer.Write(LogonID);
@@ -34,8 +31,6 @@ public class CommHeader
         writer.Write(Misc);
         writer.Write(ErrorCode);
         writer.Write(BufferSize);
-
-        return stream.ToArray();
     }
 
     public static async Task<CommHeader> ReadAsync(Stream stream)
