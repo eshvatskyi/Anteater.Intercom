@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Color x:Key="White">White</Color>
+    <Color x:Key="Black">Black</Color>
+    <Color x:Key="Gray">#C8C8C8</Color>
+    
+    <SolidColorBrush x:Key="BlackBrush" Color="#4D000000" />
+    <SolidColorBrush x:Key="GreenBrush" Color="#8000FF00" />
+    <SolidColorBrush x:Key="GrayBrush" Color="#4DC8C8C8" />
+
+</ResourceDictionary>

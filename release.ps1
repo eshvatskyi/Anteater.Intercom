@@ -4,7 +4,7 @@
 
 param([String]$v="1.0.0") 
 
-$assetsDir = ".\src\Anteater.Intercom\Assets"
+$assetsDir = ".\src\Anteater.Intercom.WinUI\Assets"
 $publishDir = ".\publish"
 
 $nugetPackages = $env:NUGET_PACKAGES ?? "$env:USERPROFILE\.nuget\packages"
@@ -15,9 +15,12 @@ if (Test-Path $publishDir) {
 }
 
 dotnet publish `
+  ".\src\Anteater.Intercom.WinUI" `
+  /p:Platform=x86 `
   --self-contained `
   -c Release `
   -r win-x86 `
+  -f "net7.0-windows10.0.22621.0" `
   -o $publishDir
 
 if (Test-Path "$publishDir\createdump.exe") {
