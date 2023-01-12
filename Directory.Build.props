@@ -1,8 +1,6 @@
 <Project>
 
-  <PropertyGroup>
-    <Platforms>x86</Platforms>
-    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+  <PropertyGroup>    
     <LangVersion>preview</LangVersion>
     <RepositoryRootDirectory>$(MSBuildThisFileDirectory)</RepositoryRootDirectory>
   </PropertyGroup>

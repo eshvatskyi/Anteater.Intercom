@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Anteater.Intercom (Unpackaged)": {
+      "commandName": "Project",
+      "hotReloadEnabled": true
+    }
+  }
+}

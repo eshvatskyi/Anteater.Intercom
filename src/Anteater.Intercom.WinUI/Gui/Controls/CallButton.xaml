@@ -1,0 +1,22 @@
+<Button
+    x:Class="Anteater.Intercom.Gui.Controls.CallButton"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ic="using:Microsoft.Xaml.Interactions.Core"
+    xmlns:i="using:Microsoft.Xaml.Interactivity"
+    Name="_self"
+    Style="{StaticResource Button}">
+    <Image>
+        <i:Interaction.Behaviors>
+            <ic:DataTriggerBehavior Binding="{Binding IsCallStarted, ElementName=_self}" Value="{x:Null}">
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallStart.svg"/>
+            </ic:DataTriggerBehavior>
+            <ic:DataTriggerBehavior Binding="{Binding IsCallStarted, ElementName=_self}" Value="True">
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallEnd.svg"/>
+            </ic:DataTriggerBehavior>
+            <ic:DataTriggerBehavior Binding="{Binding IsCallStarted, ElementName=_self}" Value="False">
+                <ic:ChangePropertyAction PropertyName="Source" Value="ms-appx:///Assets/CallStart.svg"/>
+            </ic:DataTriggerBehavior>
+        </i:Interaction.Behaviors>
+    </Image>
+</Button>
