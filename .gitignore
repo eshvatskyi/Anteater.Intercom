@@ -276,3 +276,5 @@ Thumbs.db
 **/AngularApp/**/*.js.map
 
 *.settings
+
+GoogleService-Info.plist

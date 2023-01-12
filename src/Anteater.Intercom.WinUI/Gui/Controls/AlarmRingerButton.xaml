@@ -1,0 +1,9 @@
+<Button
+    x:Class="Anteater.Intercom.Gui.Controls.AlarmRingerButton"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Name="_self"
+    Style="{StaticResource Button}"
+    Visibility="{Binding IsActive, ElementName=_self, Converter={StaticResource BoolToVisibility}}">
+    <Image Source="ms-appx:///Assets/BellRingOn.svg" />
+</Button>
