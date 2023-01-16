@@ -5,7 +5,7 @@ namespace Anteater.Intercom.Services.Audio;
 
 public partial class AudioPlayback : IWaveSource
 {
-    private WaveOut _soundOut;
+    private WasapiOut _soundOut;
 
     private partial bool IsStoppedInner()
     {
@@ -14,7 +14,7 @@ public partial class AudioPlayback : IWaveSource
 
     private partial void Init()
     {
-        _soundOut = new WaveOut();
+        _soundOut = new WasapiOut();
     }
 
     private partial void InnerInit(int sampleRate, int channels)

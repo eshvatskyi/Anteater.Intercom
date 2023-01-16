@@ -9,12 +9,12 @@ public partial class DoorLockButton : FlexLayout
     public static readonly BindableProperty IsDoorLockedProperty =
         BindableProperty.Create(nameof(IsDoorLocked), typeof(bool), typeof(DoorLockButton), true);
 
-    private readonly IMessenger _messeger;
+    private readonly IMessenger _messenger;
     private readonly IDoorLockService _doorLock;
 
     public DoorLockButton()
     {
-        _messeger = App.Services.GetRequiredService<IMessenger>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
         _doorLock = App.Services.GetRequiredService<IDoorLockService>();
 
         InitializeComponent();
@@ -34,7 +34,7 @@ public partial class DoorLockButton : FlexLayout
 
             _ = Task.Run(async () =>
             {
-                _messeger.Send(new DoorLockStateChanged(false));
+                _messenger.Send(new DoorLockStateChanged(false));
 
                 try
                 {
@@ -47,7 +47,7 @@ public partial class DoorLockButton : FlexLayout
                     IsDoorLocked = true;
                 });
 
-                _messeger.Send(new DoorLockStateChanged(true));
+                _messenger.Send(new DoorLockStateChanged(true));
             });
         }
     }

@@ -21,10 +21,13 @@ public class UpdaterService : BackgroundService
 
                 if (mgr.IsInstalledApp)
                 {
-                    if (mgr.UpdateApp().GetAwaiter().GetResult() != null)
+                    try
                     {
-                        UpdateManager.RestartApp();
-                    }
+                        if (mgr.UpdateApp().GetAwaiter().GetResult() != null)
+                        {
+                            UpdateManager.RestartApp();
+                        }
+                    } catch { }
                 }
             }
         }

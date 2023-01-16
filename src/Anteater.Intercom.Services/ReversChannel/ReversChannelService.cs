@@ -155,15 +155,14 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
                     await _stream.FlushAsync();
                 });
             }
+
+            _semaphore.Release();
         }
         catch
         {
+            _semaphore.Release();
             Disconnect();
             throw;
-        }
-        finally
-        {
-            _semaphore.Release();
         }
     }
 

@@ -87,14 +87,22 @@ public partial class CallButton : Button, IRecipient<DoorLockStateChanged>
 
         if (!_reversAudio.IsOpen)
         {
-            await _reversAudio.ConnectAsync(AVSampleFormat.AV_SAMPLE_FMT_S16, 44100, 1);
+            try
+            {
+                await _reversAudio.ConnectAsync(_recorder.Format, _recorder.SampleRate, _recorder.Channels);
+            }
+            catch
+            {
+                DispatcherQueue.TryEnqueue(delegate
+                {
+                    IsCallStarted = false;
+                });
+
+                return;
+            }
         }
 
-        _recorder.DataAvailable += OnDataAvailable;
-
-        _recorder.Start();
-
-        _cts.Token.Register(() =>
+        _cts.Token.Register(delegate
         {
             DispatcherQueue.TryEnqueue(delegate
             {
@@ -108,19 +116,38 @@ public partial class CallButton : Button, IRecipient<DoorLockStateChanged>
                 _reversAudio.Disconnect();
             }
 
-            _recorder.DataAvailable -= OnDataAvailable;
+            _recorder.DataAvailable -= OnRecordingDataAvailable;
+
+            _recorder.Stopped -= OnRecordingStopped;
 
             _recorder.Stop();
         });
 
+
         var tcs = new TaskCompletionSource();
 
-        _cts.Token.Register(() => tcs.TrySetCanceled());
+        _cts.Token.Register(delegate
+        {
+            tcs.TrySetCanceled();
+        });
+
+        _recorder.DataAvailable += OnRecordingDataAvailable;
+
+        _recorder.Stopped += OnRecordingStopped;
+
+        try
+        {
+            _recorder.Start();
+        }
+        catch
+        {
+            _cts.Cancel();
+        }
 
         await tcs.Task;
     }
 
-    async void OnDataAvailable(byte[] data)
+    async void OnRecordingDataAvailable(byte[] data)
     {
         try
         {
@@ -130,6 +157,11 @@ public partial class CallButton : Button, IRecipient<DoorLockStateChanged>
         {
             _cts?.Cancel();
         }
+    }
+
+    void OnRecordingStopped()
+    {
+        _cts.Cancel();
     }
 
     void IRecipient<DoorLockStateChanged>.Receive(DoorLockStateChanged message)

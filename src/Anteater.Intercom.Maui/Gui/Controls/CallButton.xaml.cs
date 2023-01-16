@@ -10,7 +10,7 @@ public partial class CallButton : FlexLayout, IRecipient<DoorLockStateChanged>
     public static readonly BindableProperty IsCallStartedProperty =
         BindableProperty.Create(nameof(IsCallStarted), typeof(bool), typeof(CallButton));
 
-    private readonly IMessenger _messeger;
+    private readonly IMessenger _messenger;
     private readonly IAudioRecord _recorder;
     private readonly IReversAudioService _reversAudio;
 
@@ -18,11 +18,11 @@ public partial class CallButton : FlexLayout, IRecipient<DoorLockStateChanged>
 
     public CallButton()
     {
-        _messeger = App.Services.GetRequiredService<IMessenger>();
+        _messenger = App.Services.GetRequiredService<IMessenger>();
         _recorder = App.Services.GetRequiredService<IAudioRecord>();
         _reversAudio = App.Services.GetRequiredService<IReversAudioService>();
 
-        _messeger.Register(this);
+        _messenger.Register(this);
 
         InitializeComponent();
 
@@ -41,7 +41,7 @@ public partial class CallButton : FlexLayout, IRecipient<DoorLockStateChanged>
 
         _ = Task.Run(async () =>
         {
-            _messeger.Send(new CallStateChanged(isCallStarted));
+            _messenger.Send(new CallStateChanged(isCallStarted));
 
             if (isCallStarted)
             {
@@ -81,10 +81,6 @@ public partial class CallButton : FlexLayout, IRecipient<DoorLockStateChanged>
             }
         }
 
-        _recorder.DataAvailable += OnDataAvailable;
-
-        _recorder.Start();
-
         _cts.Token.Register(delegate
         {
             MainThread.BeginInvokeOnMainThread(delegate
@@ -92,17 +88,20 @@ public partial class CallButton : FlexLayout, IRecipient<DoorLockStateChanged>
                 IsCallStarted = false;
             });
 
-            _messeger.Send(new CallStateChanged(false));
+            _messenger.Send(new CallStateChanged(false));
 
             if (disconnect)
             {
                 _reversAudio.Disconnect();
             }
 
-            _recorder.DataAvailable -= OnDataAvailable;
+            _recorder.DataAvailable -= OnRecordingDataAvailable;
+
+            _recorder.Stopped -= OnRecordingStopped;
 
             _recorder.Stop();
         });
+
 
         var tcs = new TaskCompletionSource();
 
@@ -111,10 +110,23 @@ public partial class CallButton : FlexLayout, IRecipient<DoorLockStateChanged>
             tcs.TrySetCanceled();
         });
 
+        _recorder.DataAvailable += OnRecordingDataAvailable;
+
+        _recorder.Stopped += OnRecordingStopped;
+
+        try
+        {
+            _recorder.Start();
+        }
+        catch
+        {
+            _cts.Cancel();
+        }
+
         await tcs.Task;
     }
 
-    async void OnDataAvailable(byte[] data)
+    async void OnRecordingDataAvailable(byte[] data)
     {
         try
         {
@@ -124,6 +136,11 @@ public partial class CallButton : FlexLayout, IRecipient<DoorLockStateChanged>
         {
             _cts?.Cancel();
         }
+    }
+
+    void OnRecordingStopped()
+    {
+        _cts.Cancel();
     }
 
     void IRecipient<DoorLockStateChanged>.Receive(DoorLockStateChanged message)

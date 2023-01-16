@@ -6,7 +6,11 @@ public interface IAudioRecord
 {
     public delegate void DataAvailableEventHandler(byte[] data);
 
+    public delegate void StoppedEventHandler();
+
     event DataAvailableEventHandler DataAvailable;
+
+    event StoppedEventHandler Stopped;
 
     AVSampleFormat Format { get; }
 
