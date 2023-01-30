@@ -21,6 +21,7 @@ public partial class VideoPlayer : Grid, IRecipient<ChangeVideoState>, IRecipien
     private readonly RtspStreamReader _rtspStream;
 
     private bool _isMuted;
+    private WriteableBitmap _bitmap;
 
     public VideoPlayer()
     {
@@ -35,17 +36,24 @@ public partial class VideoPlayer : Grid, IRecipient<ChangeVideoState>, IRecipien
 
         Loaded += OnLoaded;
         Unloaded += OnUnload;
+
+        MainWindow.Instance.Closed += (_, _) => OnUnload(null, null);
     }
 
     void OnLoaded(object sender, RoutedEventArgs e)
     {
         _messenger.RegisterAll(this);
+
+        _rtspStream.VideoFrameDecoded += OnVideoFrameDecoded;
+        _rtspStream.AudioFrameDecoded += OnAudioFrameDecoded;
     }
 
     void OnUnload(object sender, RoutedEventArgs e)
     {
         _messenger.UnregisterAll(this);
 
+        _rtspStream.VideoFrameDecoded -= OnVideoFrameDecoded;
+        _rtspStream.AudioFrameDecoded -= OnAudioFrameDecoded;
         _rtspStream.Stop();
 
         _playback.Stop();
@@ -53,6 +61,8 @@ public partial class VideoPlayer : Grid, IRecipient<ChangeVideoState>, IRecipien
 
     public void Connect()
     {
+        _bitmap = null;
+
         var uriBuilder = new UriBuilder
         {
             Scheme = "rtsp",
@@ -78,19 +88,9 @@ public partial class VideoPlayer : Grid, IRecipient<ChangeVideoState>, IRecipien
 
         DispatcherQueue.TryEnqueue(delegate
         {
-            var bitmap = new WriteableBitmap(format.Width, format.Height);
+            _bitmap = new WriteableBitmap(format.Width, format.Height);
 
-            _rtspStream.VideoFrameDecoded += (_, data) =>
-            {
-                DispatcherQueue?.TryEnqueue(delegate
-                {
-                    data.CopyTo(bitmap.PixelBuffer);
-
-                    bitmap.Invalidate();
-                });
-            };
-
-            _image.Source = bitmap;
+            _image.Source = _bitmap;
         });
     }
 
@@ -109,8 +109,19 @@ public partial class VideoPlayer : Grid, IRecipient<ChangeVideoState>, IRecipien
         {
             _playback.Start();
         }
+    }
 
-        _rtspStream.AudioFrameDecoded += OnAudioFrameDecoded;
+    void OnVideoFrameDecoded(RtspStream stream, byte[] data)
+    {
+        if (_bitmap is not null)
+        {
+            DispatcherQueue?.TryEnqueue(delegate
+            {
+                data.CopyTo(_bitmap.PixelBuffer);
+
+                _bitmap.Invalidate();
+            });
+        }
     }
 
     void OnAudioFrameDecoded(RtspStream stream, byte[] data)
@@ -122,7 +133,7 @@ public partial class VideoPlayer : Grid, IRecipient<ChangeVideoState>, IRecipien
     {
         DispatcherQueue.TryEnqueue(delegate
         {
-            Visibility = message.IsPaused ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+            Visibility = message.IsPaused ? Visibility.Collapsed : Visibility.Visible;
         });
 
         if (message.IsPaused)

@@ -76,7 +76,7 @@ public unsafe class RtspStreamReader : IDisposable
         {
             callback = (AVIOInterruptCB_callback)delegate (void* args)
             {
-                if ((DateTime.Now - *(DateTime*)args).TotalSeconds > 5)
+                if ((DateTime.Now - *(DateTime*)args).TotalSeconds > 10)
                 {
                     return 1;
                 }
@@ -86,7 +86,12 @@ public unsafe class RtspStreamReader : IDisposable
             opaque = &timestamp,
         };
 
-        var result = ffmpeg.avformat_open_input(&context, _url, null, null) >= 0;
+        AVDictionary* stream_opts;
+
+        ffmpeg.av_dict_set(&stream_opts, "rtsp_transport", "tcp", 0);
+        ffmpeg.av_dict_set(&stream_opts, "rtpflags", "send_bye", 0);
+
+        var result = ffmpeg.avformat_open_input(&context, _url, null, &stream_opts) >= 0;
 
         ffmpeg.avformat_free_context(context);
 
@@ -107,9 +112,10 @@ public unsafe class RtspStreamReader : IDisposable
         var context = ffmpeg.avformat_alloc_context();
 
         AVDictionary* stream_opts;
-
+        
         ffmpeg.av_dict_set(&stream_opts, "rtsp_transport", "tcp", 0);
         ffmpeg.av_dict_set(&stream_opts, "timeout", $"{1 * 1000 * 1000}", 0);
+        ffmpeg.av_dict_set(&stream_opts, "rtpflags", "send_bye", 0);
 
         if (ffmpeg.avformat_open_input(&context, _url, null, &stream_opts) < 0)
         {
@@ -267,6 +273,7 @@ public unsafe class RtspStreamReader : IDisposable
             if (_context is not null)
             {
                 ffmpeg.av_read_pause(_context);
+                ffmpeg.avformat_flush(_context);
                 ffmpeg.avformat_free_context(_context);
                 _context = null;
             }

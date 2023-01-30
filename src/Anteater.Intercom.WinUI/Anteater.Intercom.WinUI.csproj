@@ -3,19 +3,17 @@
     <OutputType>WinExe</OutputType>
     <TargetFrameworks>net7.0-windows10.0.22621.0</TargetFrameworks>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
-    <Platforms>x86</Platforms>
-    
+    <Platforms>x86;x64</Platforms>
+
     <AssemblyName>AnteaterIntercom</AssemblyName>
     <RootNamespace>Anteater.Intercom</RootNamespace>
     <ApplicationManifest>App.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\Icon.ico</ApplicationIcon>
 
     <UseWinUI>true</UseWinUI>
-    <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <WindowsPackageType>None</WindowsPackageType>
-    <!--<PublishSingleFile>true</PublishSingleFile>-->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
@@ -29,6 +27,7 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.25231-preview" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="2.0.9" />
     <PackageReference Include="PInvoke.User32" Version="0.7.124" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -53,11 +52,11 @@
     <Content Include="Assets\VolumeUp.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Settings.svg" CopyToOutputDirectory="PreserveNewest" />
 
-    <None Include="FFmpeg\$(Platform)\*.dll" Visible="false">
+    <Content Include="FFmpeg\$(Platform)\*.dll" Visible="false">
       <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-    </None>
+    </Content>
 
     <None Include="FFmpeg\**\*.dll" Visible="true" />
   </ItemGroup>

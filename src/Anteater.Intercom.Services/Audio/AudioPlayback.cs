@@ -30,6 +30,6 @@ public partial class AudioPlayback : IAudioPlayback
 
     public void AddSamples(byte[] data)
     {
-        _buffer.Write(data, 0, data.Length);
+        _buffer?.Write(data, 0, data.Length);
     }
 }

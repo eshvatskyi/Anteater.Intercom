@@ -39,6 +39,12 @@ sealed partial class App : Application
 
         Services = services.BuildServiceProvider();
 
+        UnhandledException += OnUnhandledException;
+
+        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+
         InitializeComponent();
     }
 
@@ -50,7 +56,6 @@ sealed partial class App : Application
         builder.Add<SettingsConfigurationSource>(_ => { });
 
         var config = builder.Build();
-
 
         services.AddSingleton<IConfiguration>(config);
 
@@ -72,9 +77,9 @@ sealed partial class App : Application
         services.AddSingleton<AlarmEventsService>();
     }
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override void OnLaunched(LaunchActivatedEventArgs e)
     {
-        base.OnLaunched(args);
+        base.OnLaunched(e);
 
         _mutex = new Mutex(true, UniqueMutexName, out var isOwned);
         _eventWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, UniqueEventName);
@@ -118,5 +123,26 @@ sealed partial class App : Application
         _eventWaitHandle.Set();
 
         Process.GetCurrentProcess().Kill();
+    }
+
+    void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        using var eventLog = new EventLog("Application") { Source = "Application" };
+
+        eventLog.WriteEntry(e.Exception?.ToString() ?? "Unknown exception", EventLogEntryType.Error);
+    }
+
+    void OnDomainUnhandledException(object sender, System.UnhandledExceptionEventArgs e)
+    {
+        using var eventLog = new EventLog("Application") { Source = "Application" };
+
+        eventLog.WriteEntry(e.ExceptionObject?.ToString() ?? "Unknown exception", EventLogEntryType.Error);
+    }
+
+    void OnUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+    {
+        using var eventLog = new EventLog("Application") { Source = "Application" };
+
+        eventLog.WriteEntry(e.Exception?.ToString() ?? "Unknown exception", EventLogEntryType.Error);
     }
 }
