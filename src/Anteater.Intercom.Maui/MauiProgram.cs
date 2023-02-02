@@ -1,5 +1,5 @@
 using Anteater.Intercom.Gui;
-using Anteater.Intercom.Services;
+using Anteater.Intercom.Gui.ViewModels;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Events;
 using Anteater.Intercom.Services.ReversChannel;
@@ -8,6 +8,7 @@ using Anteater.Intercom.Settings;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Configuration;
+using Sharp.UI;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 
 namespace Anteater.Intercom;
@@ -16,7 +17,7 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        return MauiApp
+        var app = MauiApp
             .CreateBuilder()
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
@@ -30,6 +31,8 @@ public static class MauiProgram
             .ConfigureServices()
             .ConfigureViewModels()
             .Build();
+
+        return app;
     }
 
     static MauiAppBuilder ConfigureSettings(this MauiAppBuilder builder)
@@ -53,13 +56,18 @@ public static class MauiProgram
         builder.Services.AddSingleton<IReversAudioService>(x => x.GetRequiredService<ReversChannelService>());
         builder.Services.AddSingleton<IDoorLockService>(x => x.GetRequiredService<ReversChannelService>());
 
-        builder.Services.AddSingleton<BackgroundService, AlarmEventsService>();
+        builder.Services.AddHostedService<AlarmEventsService>();
 
         return builder;
     }
 
     static MauiAppBuilder ConfigureViewModels(this MauiAppBuilder builder)
     {
+        builder.Services.AddTransient<Gui.Pages.Intercom>();
+        builder.Services.AddTransient<Gui.Pages.Settings>();
+
+        builder.Services.AddTransient<IntercomViewModel>();
+
         return builder;
     }
 }

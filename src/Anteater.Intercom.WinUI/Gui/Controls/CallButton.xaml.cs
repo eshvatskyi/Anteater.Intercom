@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.ReversChannel;
+using CommunityToolkit.Extensions.Hosting;
 using CommunityToolkit.Mvvm.Messaging;
 using FFmpeg.AutoGen.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,9 +27,9 @@ public partial class CallButton : Button, IRecipient<DoorLockStateChanged>
 
     public CallButton()
     {
-        _messenger = App.Services.GetRequiredService<IMessenger>();
-        _recorder = App.Services.GetRequiredService<IAudioRecord>();
-        _reversAudio = App.Services.GetRequiredService<IReversAudioService>();
+        _messenger = (App.Current as CancelableApplication).Services.GetRequiredService<IMessenger>();
+        _recorder = (App.Current as CancelableApplication).Services.GetRequiredService<IAudioRecord>();
+        _reversAudio = (App.Current as CancelableApplication).Services.GetRequiredService<IReversAudioService>();
 
         InitializeComponent();
 

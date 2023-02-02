@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services.ReversChannel;
+using CommunityToolkit.Extensions.Hosting;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -20,8 +21,8 @@ public partial class DoorLockButton : Button
 
     public DoorLockButton()
     {
-        _doorLock = App.Services.GetRequiredService<IDoorLockService>();
-        _messenger = App.Services.GetRequiredService<IMessenger>();
+        _doorLock = (App.Current as CancelableApplication).Services.GetRequiredService<IDoorLockService>();
+        _messenger = (App.Current as CancelableApplication).Services.GetRequiredService<IMessenger>();
 
         InitializeComponent();
 

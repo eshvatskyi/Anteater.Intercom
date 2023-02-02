@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services.Events;
+using CommunityToolkit.Extensions.Hosting;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -24,7 +25,7 @@ sealed partial class Intercom : Page, IRecipient<AlarmEvent>, IRecipient<CallSta
 
     public Intercom()
     {
-        _messenger = App.Services.GetRequiredService<IMessenger>();
+        _messenger = (App.Current as CancelableApplication).Services.GetRequiredService<IMessenger>();
 
         InitializeComponent();
 

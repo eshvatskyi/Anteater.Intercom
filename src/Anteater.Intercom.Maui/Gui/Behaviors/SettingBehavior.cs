@@ -1,40 +1,34 @@
+using Anteater.Intercom.Gui.Controls;
+using Sharp.UI;
+
 namespace Anteater.Intercom.Gui.Behaviors;
 
-public class SettingBehavior : Behavior<Entry>
+public class SettingBehavior : AttachedBehavior<SettingEntry, SettingBehavior>
 {
-    public string Key { get; set; }
-
-    public string Type { get; set; }
-
-    public string Default { get; set; }
-
-    protected override void OnAttachedTo(Entry entry)
+    protected override void OnAttachedTo(SettingEntry entry)
     {
-        if (string.IsNullOrEmpty(Key))
+        if (string.IsNullOrEmpty(entry.Key))
         {
             return;
         }
 
         entry.Unfocused += SettingChanged;
 
-        switch (Type)
+        if (Keyboard.Numeric.Equals(entry.Keyboard))
         {
-            case "int":
-                entry.Text = Preferences.Default.Get(
-                    Key,
-                    int.TryParse(Default, out var defaultValue) ? defaultValue : 0)
-                    .ToString();
-                break;
+            var defaultValue = int.TryParse(entry.Default, out var value) ? value : 0;
 
-            default:
-                entry.Text = Preferences.Default.Get(Key, "");
-                break;
+            entry.Text = Preferences.Default.Get(entry.Key, defaultValue).ToString();
+        }
+        else
+        {
+            entry.Text = Preferences.Default.Get(entry.Key, entry.Default);
         }
 
         base.OnAttachedTo(entry);
     }
 
-    protected override void OnDetachingFrom(Entry entry)
+    protected override void OnDetachingFrom(SettingEntry entry)
     {
         entry.Unfocused -= SettingChanged;
 
@@ -43,26 +37,22 @@ public class SettingBehavior : Behavior<Entry>
 
     void SettingChanged(object sender, FocusEventArgs e)
     {
-        if (sender is not Entry entry)
+        if (sender is not SettingEntry entry)
         {
             return;
         }
 
-        switch (Type)
+        if (Keyboard.Numeric.Equals(entry.Keyboard))
         {
-            case "int":
-                Preferences.Default.Set(
-                    Key,
-                    int.TryParse(entry.Text?.Trim(), out var value)
-                        ? value
-                        : int.TryParse(Default, out var defaultValue)
-                            ? defaultValue
-                            : 0);
-                break;
+            var defaultValue = int.TryParse(entry.Default, out var value) ? value : 0;
 
-            default:
-                Preferences.Default.Set(Key, entry.Text?.Trim() ?? "");
-                break;
+            var currentValue = int.TryParse(entry.Text?.Trim(), out value) ? value : defaultValue;
+
+            Preferences.Default.Set(entry.Key, currentValue);
+        }
+        else
+        {
+            Preferences.Default.Set(entry.Key, entry.Text?.Trim() ?? "");
         }
     }
 }

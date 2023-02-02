@@ -1,4 +1,5 @@
 using System;
+using CommunityToolkit.Extensions.Hosting;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -17,7 +18,7 @@ public partial class AlarmMuteButton : Button
 
     public AlarmMuteButton()
     {
-        _messenger = App.Services.GetRequiredService<IMessenger>();
+        _messenger = (App.Current as CancelableApplication).Services.GetRequiredService<IMessenger>();
 
         InitializeComponent();
 

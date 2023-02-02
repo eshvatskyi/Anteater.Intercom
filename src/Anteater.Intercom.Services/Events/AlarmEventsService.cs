@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom.Services.Events;
@@ -39,15 +40,15 @@ public class AlarmEventsService : BackgroundService
         });
     }
 
-    protected override async Task RunAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    _cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
 
                     _cts.CancelAfter(ReConnectTimeout);
 
@@ -64,23 +65,23 @@ public class AlarmEventsService : BackgroundService
 
                     request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Username}:{_settings.Password}")));
 
-                    using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stoppingToken);
 
                     response.EnsureSuccessStatusCode();
 
-                    using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    using var stream = await response.Content.ReadAsStreamAsync(stoppingToken);
 
                     await ProcessMessagesAsync(PipeReader.Create(stream), _cts.Token);
 
-                    await Task.Delay(ContinueDelay, cancellationToken);
+                    await Task.Delay(ContinueDelay, stoppingToken);
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
                     throw;
                 }
                 catch
                 {
-                    await Task.Delay(RetryDelay, cancellationToken);
+                    await Task.Delay(RetryDelay, stoppingToken);
                 }
             }
         }

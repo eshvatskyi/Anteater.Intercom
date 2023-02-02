@@ -43,7 +43,7 @@ public partial class AudioRecord
 
             case AVAudioSessionRecordPermission.Undetermined:
 
-                audioSession.RequestRecordPermission(delegate { });
+                audioSession.RequestRecordPermission((_) => { });
 
                 return;
 

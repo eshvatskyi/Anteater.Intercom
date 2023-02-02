@@ -1,7 +1,8 @@
-<Application
+<host:CancelableApplication
     x:Class="Anteater.Intercom.App"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:host="using:CommunityToolkit.Extensions.Hosting"
     RequestedTheme="Dark">
     <Application.Resources>
         <ResourceDictionary>
@@ -11,4 +12,4 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
-</Application>
+</host:CancelableApplication>

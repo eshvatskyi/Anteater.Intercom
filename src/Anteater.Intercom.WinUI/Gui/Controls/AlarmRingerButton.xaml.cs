@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Anteater.Intercom.Services.Events;
+using CommunityToolkit.Extensions.Hosting;
 using CommunityToolkit.Mvvm.Messaging;
 using CSCore;
 using CSCore.Codecs;
@@ -27,7 +28,7 @@ public partial class AlarmRingerButton : Button, IRecipient<AlarmEvent>, IRecipi
 
     public AlarmRingerButton()
     {
-        _messenger = App.Services.GetRequiredService<IMessenger>();
+        _messenger = (App.Current as CancelableApplication).Services.GetRequiredService<IMessenger>();
 
         _waveOut = new WaveOut();
 

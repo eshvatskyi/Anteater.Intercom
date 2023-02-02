@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Rtsp;
 using Anteater.Intercom.Services.Settings;
+using CommunityToolkit.Extensions.Hosting;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -25,11 +26,11 @@ public partial class VideoPlayer : Grid, IRecipient<ChangeVideoState>, IRecipien
 
     public VideoPlayer()
     {
-        _messenger = App.Services.GetService<IMessenger>();
+        _messenger = (App.Current as CancelableApplication).Services.GetService<IMessenger>();
 
-        _settings = App.Services.GetService<IOptionsMonitor<ConnectionSettings>>().CurrentValue;
+        _settings = (App.Current as CancelableApplication).Services.GetService<IOptionsMonitor<ConnectionSettings>>().CurrentValue;
 
-        _playback = App.Services.GetService<IAudioPlayback>();
+        _playback = (App.Current as CancelableApplication).Services.GetService<IAudioPlayback>();
         _rtspStream = new RtspStreamReader();
 
         InitializeComponent();

@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 using Squirrel;
 
 namespace Anteater.Intercom.Services;
@@ -9,13 +10,13 @@ public class UpdaterService : BackgroundService
 {
     static readonly TimeSpan CheckDelay = TimeSpan.FromMinutes(5);
 
-    protected override async Task RunAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await Task.Delay(CheckDelay);
+                await Task.Delay(CheckDelay, stoppingToken);
 
                 using var mgr = new UpdateManager("\\\\10.0.1.100\\Shared\\AnteaterIntercom");
 
@@ -27,7 +28,8 @@ public class UpdaterService : BackgroundService
                         {
                             UpdateManager.RestartApp();
                         }
-                    } catch { }
+                    }
+                    catch { }
                 }
             }
         }

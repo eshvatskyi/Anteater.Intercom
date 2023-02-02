@@ -1,7 +1,0 @@
-<Window
-    x:Class="Anteater.Intercom.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Frame x:Name="MainFrame" Background="Transparent"  />
-</Window>
-

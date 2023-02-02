@@ -12,6 +12,7 @@
     <PackageReference Include="CSCore" Version="1.2.1.2" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="FFmpeg.AutoGen.Abstractions" Version="5.1.1.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
   </ItemGroup>

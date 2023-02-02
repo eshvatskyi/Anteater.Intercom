@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Anteater.Intercom.Services.Settings;
 using Anteater.Intercom.Settings;
+using CommunityToolkit.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -17,8 +18,8 @@ sealed partial class Settings : Page
 
     public Settings()
     {
-        _configuration = App.Services.GetRequiredService<IConfiguration>();
-        _connectionSettings = App.Services.GetService<IOptionsMonitor<ConnectionSettings>>();
+        _configuration = (App.Current as CancelableApplication).Services.GetRequiredService<IConfiguration>();
+        _connectionSettings = (App.Current as CancelableApplication).Services.GetService<IOptionsMonitor<ConnectionSettings>>();
 
         InitializeComponent();
 
