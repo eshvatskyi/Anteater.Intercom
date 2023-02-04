@@ -11,6 +11,8 @@ public partial class AlarmEvent
         MotionDetection
     }
 
+    public long Timestamp { get; private set; }
+
     public DateTime DateTime { get; private set; }
 
     public EventType Type { get; private set; }
@@ -23,12 +25,13 @@ public partial class AlarmEvent
     {
         alarmEvent = default;
 
-        var match = EventRegEx().Match(value ?? string.Empty);
+        var match = EventRegEx().Match(value ?? "");
 
         if (match.Success && Enum.TryParse<EventType>(match.Groups["type"].Value, out var eventType))
         {
             alarmEvent = new AlarmEvent
             {
+                Timestamp = DateTime.UtcNow.Ticks,
                 DateTime = DateTime.Parse($"{match.Groups["date"]} {match.Groups["time"]}"),
                 Type = eventType,
                 Status = match.Groups["status"].Value == "1",
@@ -37,7 +40,7 @@ public partial class AlarmEvent
                     .Select(x => ushort.TryParse(x, out var num) ? num : (ushort?)null)
                     .Where(x => x.HasValue)
                     .Select(x => x.Value)
-                    .ToArray() ?? Array.Empty<ushort>()
+                    .ToArray() ?? Array.Empty<ushort>(),
             };
 
             return true;

@@ -7,18 +7,19 @@ using Page = Microsoft.Maui.Controls.Page;
 
 namespace Anteater.Intercom.Gui;
 
+using System;
 using Sharp.UI;
 
 public class App : Application
 {
     private readonly IMessenger _messenger;
     private readonly IEnumerable<IHostedService> _hostedServices;
+    private readonly CancellationTokenSource _stoppingTokenSource = new();
 
     public App(IMessenger messenger, IEnumerable<IHostedService> hostedServices, Pages.Intercom intercomPage)
     {
         _messenger = messenger;
         _hostedServices = hostedServices;
-
 
         MainPage = new NavigationPage(x => x
             .Resources(new ResourceDictionary
@@ -46,34 +47,36 @@ public class App : Application
     {
         var window = base.CreateWindow(activationState);
 
-        var stoppingTokenSource = new CancellationTokenSource();
-
-        window.Created += delegate
-        {
-            foreach (var service in _hostedServices)
-            {
-                _ = service.StartAsync(stoppingTokenSource.Token);
-            }
-        };
-
-        window.Destroying += delegate
-        {
-            _messenger.Send(new WindowStateChanged(WindowState.Closing));
-
-            stoppingTokenSource.Cancel();
-        };
-
-
-        window.Stopped += delegate
-        {
-            _messenger.Send(new WindowStateChanged(WindowState.Stopped));
-        };
-
-        window.Resumed += delegate
-        {
-            _messenger.Send(new WindowStateChanged(WindowState.Resumed));
-        };
+        window.Created += OnWindowCreated;
+        window.Destroying += OnWindowsDestroying;
+        window.Stopped += OnWindowStopped;
+        window.Resumed += OnWindowResumed;
 
         return window;
+    }
+
+    void OnWindowCreated(object sender, EventArgs e)
+    {
+        foreach (var service in _hostedServices)
+        {
+            _ = service.StartAsync(_stoppingTokenSource.Token);
+        }
+    }
+
+    void OnWindowsDestroying(object sender, EventArgs e)
+    {
+        _messenger.Send(new WindowStateChanged(WindowState.Closing));
+
+        _stoppingTokenSource.Cancel();
+    }
+
+    void OnWindowStopped(object sender, EventArgs e)
+    {
+        _messenger.Send(new WindowStateChanged(WindowState.Stopped));
+    }
+
+    void OnWindowResumed(object sender, EventArgs e)
+    {
+        _messenger.Send(new WindowStateChanged(WindowState.Resumed));
     }
 }

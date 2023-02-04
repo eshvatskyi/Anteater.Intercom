@@ -20,7 +20,7 @@ public class SettingsConfigurationProvider : ConfigurationProvider
 
         using (var reader = new StreamReader(configFile))
         {
-            string sectionPrefix = string.Empty;
+            string sectionPrefix = "";
 
             while (reader.Peek() != -1)
             {

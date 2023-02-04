@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using FFmpeg.AutoGen.Abstractions;
 using static Anteater.Intercom.Services.Rtsp.RtspStream;
 
@@ -10,17 +12,15 @@ public unsafe class RtspStreamReader : IDisposable
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     private readonly List<RtspStream> _streams = new();
-    private readonly object _lock = new();
 
     private string _url = null;
+    private bool _udpSupport = false;
     private AVFormatContext* _context = null;
     private Task _workerTask = Task.CompletedTask;
     private CancellationTokenSource _cts;
     private bool _disposedValue;
 
     public bool IsReadingStopped => IsReconnecting || IsStopping || IsStopped;
-
-    public bool IsConnecting { get; private set; }
 
     public bool IsReconnecting { get; private set; }
 
@@ -93,16 +93,24 @@ public unsafe class RtspStreamReader : IDisposable
 
         var result = ffmpeg.avformat_open_input(&context, _url, null, &stream_opts) >= 0;
 
-        ffmpeg.avformat_free_context(context);
+        CloseContext(context);
 
         return result;
     }
 
     void InitializeContext()
     {
-        ffmpeg.avformat_free_context(_context);
+        //ffmpeg.av_log_set_level(ffmpeg.AV_LOG_DEBUG);
+        //ffmpeg.av_log_set_callback((av_log_set_callback_callback)delegate (void* p0, int level, string format, byte* vl)
+        //{
+        //    var lineSize = 1024;
+        //    var lineBuffer = stackalloc byte[lineSize];
+        //    var printPrefix = 1;
 
-        _context = null;
+        //    ffmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
+
+        //    Debug.Write(Marshal.PtrToStringAnsi((IntPtr)lineBuffer));
+        //});
 
         if (!CanInitializeContext())
         {
@@ -112,20 +120,20 @@ public unsafe class RtspStreamReader : IDisposable
         var context = ffmpeg.avformat_alloc_context();
 
         AVDictionary* stream_opts;
-        
-        ffmpeg.av_dict_set(&stream_opts, "rtsp_transport", "tcp", 0);
+
+        ffmpeg.av_dict_set(&stream_opts, "rtsp_transport", _udpSupport ? "udp" : "tcp", 0);
         ffmpeg.av_dict_set(&stream_opts, "timeout", $"{1 * 1000 * 1000}", 0);
         ffmpeg.av_dict_set(&stream_opts, "rtpflags", "send_bye", 0);
 
         if (ffmpeg.avformat_open_input(&context, _url, null, &stream_opts) < 0)
         {
-            ffmpeg.avformat_free_context(context);
+            CloseContext(context);
             return;
         }
 
         if (ffmpeg.avformat_find_stream_info(context, null) < 0)
         {
-            ffmpeg.avformat_free_context(context);
+            CloseContext(context);
             return;
         }
 
@@ -243,7 +251,14 @@ public unsafe class RtspStreamReader : IDisposable
 
     public RtspStreamFormat Start(string url)
     {
-        _url = url;
+        var uri = new Uri(url);
+
+        if (uri.HostNameType == UriHostNameType.IPv4)
+        {
+            _udpSupport = IPAddress.Parse(uri.Host).AddressFamily == AddressFamily.InterNetwork;
+        }
+
+        _url = uri.ToString();
 
         Initialize();
 
@@ -270,13 +285,8 @@ public unsafe class RtspStreamReader : IDisposable
 
         try
         {
-            if (_context is not null)
-            {
-                ffmpeg.av_read_pause(_context);
-                ffmpeg.avformat_flush(_context);
-                ffmpeg.avformat_free_context(_context);
-                _context = null;
-            }
+            CloseContext(_context);
+            _context = null;
 
             _streams.ForEach(x => x.Dispose());
             _streams.Clear();
@@ -285,6 +295,18 @@ public unsafe class RtspStreamReader : IDisposable
         {
             _semaphore.Release();
         }
+    }
+
+    static void CloseContext(AVFormatContext* context)
+    {
+        if (context is not null)
+        {
+            ffmpeg.av_read_pause(context);
+            ffmpeg.avformat_flush(context);
+        }
+
+        ffmpeg.avformat_close_input(&context);
+        ffmpeg.avformat_free_context(context);
     }
 
     protected virtual void Dispose(bool disposing)

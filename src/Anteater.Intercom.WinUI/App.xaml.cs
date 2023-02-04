@@ -55,7 +55,7 @@ sealed partial class App : CancelableApplication
                 }
             }, cts.Token);
 
-            window.Closed += delegate
+            window.Closed += (_, _) =>
             {
                 cts.Cancel();
             };

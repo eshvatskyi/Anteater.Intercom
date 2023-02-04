@@ -39,6 +39,8 @@ public partial class AudioRecord
             _soundIn.Dispose();
         }
         catch { }
+
+        Stopped?.Invoke();
     }
 
     void OnDataAvailable(object sender, DataAvailableEventArgs e)
@@ -48,9 +50,6 @@ public partial class AudioRecord
 
     void OnStopped(object sender, RecordingStoppedEventArgs e)
     {
-        _ = Task.Run(delegate
-        {
-            Stopped?.Invoke();
-        });
+        _ = Task.Run(() => Stopped?.Invoke());
     }
 }

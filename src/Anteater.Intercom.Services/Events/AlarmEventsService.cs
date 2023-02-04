@@ -58,7 +58,7 @@ public class AlarmEventsService : BackgroundService
                         Host = _settings.Host,
                         Port = _settings.WebPort,
                         Path = "cgi-bin/alarmchangestate_cgi",
-                        Query = $"user={_settings.Username}&pwd={_settings.Password}&parameter=MotionDetection;SensorAlarm;SensorOutAlarm",
+                        Query = $"parameter=MotionDetection;SensorAlarm;SensorOutAlarm",
                     };
 
                     using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.Uri);

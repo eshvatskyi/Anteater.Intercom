@@ -24,8 +24,11 @@ public partial class AudioPlayback : IWaveSource
 
     public partial void Start()
     {
-        _soundOut.Initialize(this);
-        _soundOut.Play();
+        if (WaveFormat is not null)
+        {
+            _soundOut.Initialize(this);
+            _soundOut.Play();
+        }        
     }
 
     public partial void Stop()

@@ -1,102 +1,70 @@
+using Anteater.Intercom.Gui.Messages;
 using Anteater.Intercom.Gui.ViewModels;
-using Microsoft.Maui.Layouts;
+using CommunityToolkit.Mvvm.Messaging;
 
 namespace Anteater.Intercom.Gui.Pages;
 
 using Sharp.UI;
 
-public class Intercom : ContentPage
+public partial class Intercom : ContentPage
 {
-    private readonly Settings _settingsPage;
+    private readonly IServiceProvider _services;
+    private readonly IMessenger _messenger;
 
-    public Intercom(IntercomViewModel viewModel, Settings settingsPage)
+    public Intercom(IServiceProvider services, IMessenger messenger, IntercomViewModel viewModel)
     {
-        _settingsPage = settingsPage;
+        _services = services;
+        _messenger = messenger;
 
         NavigationPage.SetHasNavigationBar(this, false);
 
-        Loaded += (_, _) => BuildControls(viewModel);
-    }
-
-    void BuildControls(IntercomViewModel viewModel)
-    {
         BindingContext = viewModel;
 
-        Content = new AbsoluteLayout()
+        Build();
+
+        Loaded += (_, _) =>
         {
-            new Image(x => x
-                .ZIndex(-1)
-                .AbsoluteLayoutBounds(new Rect(0, 0, 1, 1))
-                .AbsoluteLayoutFlags(AbsoluteLayoutFlags.PositionProportional | AbsoluteLayoutFlags.SizeProportional)
-                .Source(x => x.Path(nameof(viewModel.ImageSource)))
-                .OnSizeChanged(x =>
+            _ = Task.Run(viewModel.Player.Connect);
+
+            Appearing += (_, _) =>
+            {
+                _messenger.Register<WindowStateChanged>(this, (_, message) =>
                 {
-                    viewModel.ImageWidth = (int)x.Width;
-                    viewModel.ImageHeight = (int)x.Height;
-                })
-            ),
+                    switch (message.State)
+                    {
+                        case WindowState.Resumed:
+                            _ = Task.Run(viewModel.Player.Connect);
+                            break;
 
-            new VerticalStackLayout(x => x
-                .AbsoluteLayoutBounds(new Rect(1, 0.5, 95, 1))
-                .AbsoluteLayoutFlags(AbsoluteLayoutFlags.PositionProportional | AbsoluteLayoutFlags.HeightProportional)
-                .Margin(new Thickness(0, 20, 20, 20))
-                .Spacing(20)
-            )
-            {
-                new ImageButton(x => x
-                    .WidthRequest(75)
-                    .HeightRequest(75)
-                    .Source(ImageSource.FromFile("settings.png"))
-                    .IsEnabled(x => x.Path(nameof(viewModel.IsDoorLocked)))
-                    .OnClicked((_) => Navigation.PushAsync(_settingsPage))
-                ),
-            },
+                        case WindowState.Stopped:
+                            _ = Task.Run(viewModel.Player.Stop);
+                            break;
 
-            new HorizontalStackLayout(x => x
-                .AbsoluteLayoutBounds(new Rect(0.5, 1, -1, 120))
-                .AbsoluteLayoutFlags(AbsoluteLayoutFlags.PositionProportional)
-                .Margin(new Thickness(0, 0, 0, 20))
-            )
+                        case WindowState.Closing:
+                            _ = Task.Run(viewModel.Player.Stop);
+                            break;
+                    }
+                });
+
+                viewModel.ShowOverlay.Execute(true);
+
+                _ = Task.Run(viewModel.Player.Connect);
+            };
+
+            Disappearing += (_, _) =>
             {
-                new ImageButton(x => x
-                    .WidthRequest(100)
-                    .HeightRequest(100)
-                    .Margin(new Thickness(0, 0, 20, 0))
-                    .Source(ImageSource.FromFile("doorlock.png"))
-                    .IsEnabled(x => x.Path(nameof(viewModel.IsDoorLocked)))
-                    .Command(x => x.Path(nameof(viewModel.UnlockDoor)))
-                    .Triggers(
-                        new DataTrigger<ImageButton>(x => x.Path(nameof(viewModel.IsDoorLocked)), true)
-                        {
-                            ImageButton.SourceProperty.Set(ImageSource.FromFile("doorlock.png")),
-                        },
-                        new DataTrigger<ImageButton>(x => x.Path(nameof(viewModel.IsDoorLocked)), false)
-                        {
-                            ImageButton.SourceProperty.Set(ImageSource.FromFile("doorunlock.png")),
-                        }
-                    )
-                ),
-                new ImageButton(x => x
-                    .WidthRequest(100)
-                    .HeightRequest(100)
-                    .Source(ImageSource.FromFile("callstart.png"))
-                    .IsEnabled(x => x.Path(nameof(viewModel.IsDoorLocked)))
-                    .Command(x => x.Path(nameof(viewModel.StartCall)))
-                    .Triggers(
-                        new DataTrigger<ImageButton>(x => x.Path(nameof(viewModel.IsCallStarted)), true)
-                        {
-                            ImageButton.SourceProperty.Set(ImageSource.FromFile("callend.png")),
-                        },
-                        new DataTrigger<ImageButton>(x => x.Path(nameof(viewModel.IsCallStarted)), false)
-                        {
-                            ImageButton.SourceProperty.Set(ImageSource.FromFile("callstart.png")),
-                        }
-                    )
-                ),
-            },
+                _messenger.UnregisterAll(this);
+
+                _ = Task.Run(viewModel.Player.Stop);
+            };
         };
+    }
 
-        Content.Resources = new ResourceDictionary
+    void Build()
+    {
+        Content = BuildLayout();
+
+        Resources = new ResourceDictionary
         {
             new Style<ImageButton>(applyToDerivedTypes: true)
             {
@@ -104,7 +72,7 @@ public class Intercom : ContentPage
                 ImageButton.BorderColorProperty.Set(Colors.Transparent),
                 ImageButton.BorderWidthProperty.Set(0),
                 ImageButton.CornerRadiusProperty.Set(30),
-                ImageButton.PaddingProperty.Set(15),
+                ImageButton.PaddingProperty.Set(10),
 
                 new VisualState(VisualState.ImageButton.Normal)
                 {
@@ -124,12 +92,7 @@ public class Intercom : ContentPage
                 },
             },
         };
-
-        Appearing += (_, _) => _ = Task.Run(viewModel.Connect);
-
-        Disappearing += (_, _) => _ = Task.Run(viewModel.Stop);
-
-        _ = Task.Run(viewModel.Connect);
     }
-}
 
+    private partial View BuildLayout();
+}
