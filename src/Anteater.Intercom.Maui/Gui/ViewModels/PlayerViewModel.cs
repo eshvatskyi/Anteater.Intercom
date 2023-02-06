@@ -9,7 +9,7 @@ namespace Anteater.Intercom.Gui.ViewModels;
 
 public partial class PlayerViewModel : ObservableViewModelBase
 {
-    private RtspStreamReader _rtspStream;
+    private RtspStreamContext _rtspStream;
     private readonly IAudioPlayback _playback;
 
     private ConnectionSettings _settings;
@@ -50,11 +50,11 @@ public partial class PlayerViewModel : ObservableViewModelBase
         set => SetProperty(ref _imageSource, value);
     }
 
+    public bool IsConnected => _rtspStream is not null;
+
     public void Connect()
     {
         ImageSource = ImageSource.FromFile("playeron.png");
-
-        _rtspStream = new RtspStreamReader();
 
         var uriBuilder = new UriBuilder
         {
@@ -66,33 +66,44 @@ public partial class PlayerViewModel : ObservableViewModelBase
             Path = "av0_0",
         };
 
-        var format = _rtspStream.Start(uriBuilder.Uri.ToString());
-
-        if (format.Video is null)
+        try
         {
-            _reconnectCancellation = new CancellationTokenSource();
+            _rtspStream = RtspStreamContext.Create(uriBuilder.Uri.ToString());
 
-            Task.Delay(TimeSpan.FromSeconds(5), _reconnectCancellation.Token)
-                .ContinueWith(_ => Connect(), TaskContinuationOptions.OnlyOnRanToCompletion);
+            _rtspStream.FormatAvailable += (_, format) =>
+            {
+                _reconnectCancellation?.Cancel();
+
+                InitializeVideo(format.Video);
+                InitializeAudio(format.Audio);
+            };
+
+            _rtspStream.Stopped += OnStopped;
         }
-
-        InitializeVideo(format.Video);
-        InitializeAudio(format.Audio);
+        catch
+        {
+            OnStopped(_rtspStream);
+        }
     }
 
     public void Stop()
     {
         _reconnectCancellation?.Cancel();
 
-        _rtspStream.VideoFrameDecoded -= OnVideoFrameDecoded;
-        _rtspStream.AudioFrameDecoded -= OnAudioFrameDecoded;
-        _rtspStream.Stop();
-        _playback.Stop();
-
-        _rtspStream = null;
         _imageInfo = SKImageInfo.Empty;
 
-        ImageSource = ImageSource.FromFile("playeroff.png");
+        if (_rtspStream is not null)
+        {
+            _rtspStream.VideoFrameDecoded -= OnVideoFrameDecoded;
+            _rtspStream.AudioFrameDecoded -= OnAudioFrameDecoded;
+            _rtspStream.Stopped -= OnStopped;
+            _rtspStream.DisposeAsync();
+            _rtspStream = null;
+        }
+
+        _mainThreadImageSourceTask.ContinueWith(_ => ImageSource = ImageSource.FromFile("playeroff.png"));
+
+        _playback.Stop();
     }
 
     public void IsSoundMuted(bool state)
@@ -101,24 +112,30 @@ public partial class PlayerViewModel : ObservableViewModelBase
         {
             if (!_playback.IsStopped)
             {
-                _rtspStream.AudioFrameDecoded -= OnAudioFrameDecoded;
-                _ = Task.Run(_playback.Stop);
+                if (_rtspStream is not null)
+                {
+                    _rtspStream.AudioFrameDecoded -= OnAudioFrameDecoded;
+                }
+
+                _playback.Stop();
             }
         }
         else
         {
             if (_playback.IsStopped)
             {
-                _ = Task.Run(_playback.Start);
-                _rtspStream.AudioFrameDecoded += OnAudioFrameDecoded;
+                _playback.Start();
+
+                if (_rtspStream is not null)
+                {
+                    _rtspStream.AudioFrameDecoded += OnAudioFrameDecoded;
+                }
             }
         }
     }
 
     void InitializeVideo(RtspStreamVideoFormat format)
     {
-        _rtspStream.VideoFrameDecoded -= OnVideoFrameDecoded;
-
         if (format is null)
         {
             return;
@@ -131,8 +148,6 @@ public partial class PlayerViewModel : ObservableViewModelBase
 
     void InitializeAudio(RtspStreamAudioFormat format)
     {
-        _rtspStream.AudioFrameDecoded -= OnAudioFrameDecoded;
-
         _playback.Stop();
 
         if (format is null)
@@ -145,43 +160,63 @@ public partial class PlayerViewModel : ObservableViewModelBase
         if (!_isSoundMuted)
         {
             _playback.Start();
+
             _rtspStream.AudioFrameDecoded += OnAudioFrameDecoded;
         }
     }
 
     void OnVideoFrameDecoded(RtspStream stream, byte[] data)
     {
-        try
+        if (_imageInfo.IsEmpty)
         {
-            if (_mainThreadImageSourceTask.IsCompleted)
-            {
-                _mainThreadImageSourceTask = MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    if (ImageSource is SKBitmapImageSource bitmapImageSource)
-                    {
-                        bitmapImageSource?.Bitmap?.Dispose();
-                    }
+            return;
+        }
 
+        if (_mainThreadImageSourceTask.IsCompleted)
+        {
+            var skdata = SKData.CreateCopy(data);
+
+            _mainThreadImageSourceTask = MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                using (skdata)
+                {
                     if (_imageInfo.IsEmpty)
                     {
                         return;
                     }
 
-                    using var skdata = SKData.CreateCopy(data);
                     using var origin = new SKBitmap();
 
-                    if (origin.InstallPixels(_imageInfo, skdata.Data))
+                    if (!origin.InstallPixels(_imageInfo, skdata.Data))
                     {
-                        ImageSource = (SKBitmapImageSource)origin.Resize(new SKSizeI(ImageWidth, ImageHeight), SKFilterQuality.Medium);
+                        return;
                     }
-                });
-            }
+
+                    using var resized = origin.Resize(new SKSizeI(ImageWidth, ImageHeight), SKFilterQuality.Medium);
+
+                    ImageSource = (SKBitmapImageSource)resized;
+                }
+            });
         }
-        catch { }
     }
 
     void OnAudioFrameDecoded(RtspStream stream, byte[] data)
     {
         _playback.AddSamples(data);
+    }
+
+    void OnStopped(RtspStreamContext context)
+    {
+        if (context is not null)
+        {
+            context.VideoFrameDecoded -= OnVideoFrameDecoded;
+            context.AudioFrameDecoded -= OnAudioFrameDecoded;
+            context.Stopped -= OnStopped;
+        }
+
+        _reconnectCancellation = new CancellationTokenSource();
+
+        Task.Delay(TimeSpan.FromSeconds(10), _reconnectCancellation.Token)
+            .ContinueWith(_ => Connect(), TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 }

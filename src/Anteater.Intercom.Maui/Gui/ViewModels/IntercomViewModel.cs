@@ -31,6 +31,8 @@ public partial class IntercomViewModel : ObservableViewModelBase, IRecipient<Ala
         Call.PropertyChanged += OnDoorOrCallStateChanged;
         Settings.PropertyChanged += OnSettingsStateChanged;
 
+        Player.IsSoundMuted(Settings.IsSoundMuted);
+
         IsSettingsEnaled = Door.IsLocked && !Call.IsStarted;
         IsOverlayVisible = true;
         ApplyOverlayChanges(true);

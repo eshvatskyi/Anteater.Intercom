@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom;
 
-public class PushNotificationService : BackgroundService, IRecipient<AlarmEvent>
+public class RemoteNotificationsService : BackgroundService, IRecipient<AlarmEvent>
 {
     private readonly FirebaseMessaging _firebaseMessaging;
 
@@ -16,8 +16,9 @@ public class PushNotificationService : BackgroundService, IRecipient<AlarmEvent>
 
     private int _motionAlertsCount;
     private long _motionAlertTimestamp;
+    private DateTime _motionAlertSent = DateTime.UtcNow;
 
-    public PushNotificationService(FirebaseMessaging firebaseMessaging, IOptionsMonitor<ConnectionSettings> settings, IMessenger messenger)
+    public RemoteNotificationsService(FirebaseMessaging firebaseMessaging, IOptionsMonitor<ConnectionSettings> settings, IMessenger messenger)
     {
         _firebaseMessaging = firebaseMessaging;
 
@@ -72,18 +73,23 @@ public class PushNotificationService : BackgroundService, IRecipient<AlarmEvent>
             _motionAlertTimestamp = DateTime.UtcNow.Ticks;
             _motionAlertsCount++;
 
-            if (_motionAlertsCount == 5)
+            if (_motionAlertsCount == 3)
             {
-                _firebaseMessaging.SendAsync(new()
+                if ((DateTime.UtcNow - _motionAlertSent).TotalSeconds > 30)
                 {
-                    Topic = $"{_settings.DeviceId}.motion",
-                    Notification = new() { Title = "Motion detected" },
-                    Apns = new() { Aps = new() { Sound = "default" } },
-                });
+                    _firebaseMessaging.SendAsync(new()
+                    {
+                        Topic = $"{_settings.DeviceId}.motion",
+                        Notification = new() { Title = "Motion detected" },
+                        Apns = new() { Aps = new() { Sound = "default" } },
+                    });
+
+                    _motionAlertSent = DateTime.UtcNow;
+                }
 
                 _motionAlertTimestamp = 0;
                 _motionAlertsCount = 0;
-            }            
+            }
         }
     }
 }

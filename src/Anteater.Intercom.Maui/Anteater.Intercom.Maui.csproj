@@ -15,8 +15,8 @@
     <ApplicationTitle>Anteater Intercom</ApplicationTitle>
     <ApplicationId>com.anteater.intercom</ApplicationId>
     <ApplicationIdGuid>fea64eb9-8675-4338-8773-1b2d5b06192a</ApplicationIdGuid>
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.3</ApplicationDisplayVersion>
+    <ApplicationVersion>3</ApplicationVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) == true">
@@ -32,22 +32,23 @@
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) == true">
     <SupportedOSPlatformVersion>14.2</SupportedOSPlatformVersion>
-    <ProvisioningType>automatic</ProvisioningType>
-    <CodesignKey>Apple Development: Created via API (T9T4T47TBV)</CodesignKey>
-    <CodesignProvision>VS: com.anteater.intercom Development</CodesignProvision>
-    <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+    <ProvisioningType>manual</ProvisioningType>
+    <CodesignKey>Apple Development: Eugen Shvatsky (2ZA34AY2CR)</CodesignKey>
+    <CodesignProvision>com.anteater.intercom iOS Development</CodesignProvision>
+    <CodesignEntitlements>Platforms\iOS\Entitlements.development.plist</CodesignEntitlements>
     <EnableSGenConc>True</EnableSGenConc>
     <!--<AdditionalArgs>-gcc_flags "-v"</AdditionalArgs>-->
   </PropertyGroup>
-
+  
   <ItemGroup>
+    <PackageReference Include="Clowd.Squirrel" Version="2.9.42" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="CommunityToolkit.Maui" Version="4.0.0" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.StaticallyLinked" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-ios')) == true" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="FirebaseAdmin" Version="2.3.0" Condition="$(TargetFramework.Contains('-windows')) == true" />
-    <PackageReference Include="Plugin.Firebase" Version="1.3.0" Condition="$(TargetFramework.Contains('-ios')) == true" />
     <PackageReference Include="Sharp.UI" Version="0.2.5-alpha.1" />
     <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="2.88.3" />
+    <PackageReference Include="Xamarin.Firebase.iOS.CloudMessaging" Version="8.10.0.3" Condition="$(TargetFramework.Contains('-ios')) == true" />
   </ItemGroup>
 
   <ItemGroup>
@@ -56,10 +57,6 @@
 
   <ItemGroup>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#000000" />
-    <MauiSplashScreen Include="Resources\Images\playeron.svg">
-      <Color>#000000</Color>
-      <BaseSize>256,256</BaseSize>
-    </MauiSplashScreen>
     <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#000000" BaseSize="256,256" />
     <MauiImage Include="Resources\Images\*" />
     <MauiFont Include="Resources\Fonts\*" />
@@ -71,8 +68,8 @@
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) == true">    
-    <MauiAsset Include="Platforms\iOS\GoogleService-Info.plist" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) == true">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist" Link="%(RecursiveDir)%(Filename)%(Extension)" Visible="false" />
     <!--<_MainLinkerFlags Include="-v" />-->
     <NativeReference Include="Resources\Libs\iOS\*.a" Kind="Static" />
   </ItemGroup>
@@ -87,5 +84,5 @@
     <!--- is there proper was to add libs? -->
     <MauiAsset Include="Resources\Libs\Windows\*.dll" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
-
+  
 </Project>

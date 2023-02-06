@@ -31,15 +31,15 @@ public partial class Intercom
             )
             {
                 new ImageButton(x => x
-                    .WidthRequest(50)
-                    .HeightRequest(50)
+                    .WidthRequest(65)
+                    .HeightRequest(65)
                     .Source(ImageSource.FromFile("settings.png"))
                     .IsEnabled(x => x.Path<bool, IntercomViewModel>(x => x.IsSettingsEnaled))
                     .OnClicked(async _ => await Navigation.PushAsync(_services.GetRequiredService<Settings>()))
                 ),
                 new ImageButton(x => x
-                    .WidthRequest(50)
-                    .HeightRequest(50)
+                    .WidthRequest(65)
+                    .HeightRequest(65)
                     .Source(ImageSource.FromFile("soundoff.png"))
                     .IsEnabled(x => x.Path<bool, IntercomViewModel>(x => x.IsSettingsEnaled))
                     .Command(x => x.Path<ICommand, IntercomViewModel>(x => x.Settings.SwitchSoundState))
@@ -55,8 +55,8 @@ public partial class Intercom
                     )
                 ),
                 new ImageButton(x => x
-                    .WidthRequest(50)
-                    .HeightRequest(50)
+                    .WidthRequest(65)
+                    .HeightRequest(65)
                     .Source(ImageSource.FromFile("bellringon.png"))
                     .IsEnabled(x => x.Path<bool, IntercomViewModel>(x => x.IsSettingsEnaled))
                     .Command(x => x.Path<ICommand, IntercomViewModel>(x => x.Settings.SwitchAlarmState))
@@ -115,15 +115,17 @@ public partial class Intercom
                         }
                     )
                 ),
-                new ImageButton(x => x
-                    .WidthRequest(100)
-                    .HeightRequest(100)
-                    .Margin(new Thickness(80, 0, 0, 0))
-                    .Source(ImageSource.FromFile("bellringon.png"))
-                    .IsVisible(x => x.Path<bool, IntercomViewModel>(x => x.Settings.IsAlarmActive))
-                    .Command(x => x.Path<ICommand, IntercomViewModel>(x => x.Settings.MuteAlarm))
-                ),
             },
+            new ImageButton(x => x
+                .AbsoluteLayoutBounds(new Rect(1, 1, -1, 120))
+                .AbsoluteLayoutFlags(AbsoluteLayoutFlags.PositionProportional)
+                .Margin(new Thickness(0, 0, 20, 20))
+                .WidthRequest(100)
+                .HeightRequest(100)
+                .Source(ImageSource.FromFile("bellringon.png"))
+                .IsVisible(x => x.Path<bool, IntercomViewModel>(x => x.Settings.IsAlarmActive))
+                .Command(x => x.Path<ICommand, IntercomViewModel>(x => x.Settings.MuteAlarm))
+            ),
         }.GestureRecognizers(
             new TapGestureRecognizer(x => x
                 .NumberOfTapsRequired(1)

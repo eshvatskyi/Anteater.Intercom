@@ -1,12 +1,11 @@
-using CSCore;
-using CSCore.SoundIn;
 using FFmpeg.AutoGen.Abstractions;
+using NAudio.Wave;
 
 namespace Anteater.Intercom.Services.Audio;
 
 public partial class AudioRecord
 {
-    private WaveIn _soundIn;
+    private WaveInEvent _soundIn;
 
     private partial void Init()
     {
@@ -17,38 +16,32 @@ public partial class AudioRecord
 
     public partial void Start()
     {
-        _soundIn = new WaveIn(new WaveFormat(SampleRate, 16, Channels));
-
-        _soundIn.Initialize();
-
+        _soundIn = new WaveInEvent();
+        _soundIn.WaveFormat = new WaveFormat(SampleRate, 16, Channels);
         _soundIn.DataAvailable += OnDataAvailable;
-        _soundIn.Stopped += OnStopped;
+        _soundIn.RecordingStopped += OnStopped;
 
-        _soundIn.Start();
+        _soundIn.StartRecording();
     }
 
     public partial void Stop()
     {
-        _soundIn.DataAvailable -= OnDataAvailable;
-        _soundIn.Stopped -= OnStopped;
-
-        _soundIn.Stop();
-
-        try
+        using (_soundIn)
         {
-            _soundIn.Dispose();
+            _soundIn.DataAvailable -= OnDataAvailable;
+            _soundIn.RecordingStopped -= OnStopped;
+            _soundIn.StopRecording();
         }
-        catch { }
-
+        
         Stopped?.Invoke();
     }
 
-    void OnDataAvailable(object sender, DataAvailableEventArgs e)
+    void OnDataAvailable(object sender, WaveInEventArgs e)
     {
-        DataAvailable?.Invoke(e.Data);
+        DataAvailable?.Invoke(e.Buffer);
     }
 
-    void OnStopped(object sender, RecordingStoppedEventArgs e)
+    void OnStopped(object sender, StoppedEventArgs e)
     {
         _ = Task.Run(() => Stopped?.Invoke());
     }

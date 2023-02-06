@@ -1,26 +1,23 @@
 using Anteater.Intercom.Services.Events;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using CSCore;
-using CSCore.Codecs;
-using CSCore.SoundOut;
-using CSCore.Streams;
+using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 
 namespace Anteater.Intercom.Gui.ViewModels;
 
 public partial class SettingsViewModel : ObservableViewModelBase, IRecipient<AlarmEvent>
 {
+    private AudioFileReader _reader;
     private WaveOut _waveOut;
     private CancellationTokenSource _alarmCancellation;
 
     partial void Init()
     {
-        _waveOut = new WaveOut();
+        _reader = new AudioFileReader("doorbell.wav");
 
-        _waveOut.Initialize(new LoopStream(CodecFactory.Instance
-                .GetCodec("doorbell.wav")
-                .ToSampleSource()
-                .ToWaveSource()));
+        _waveOut = new WaveOut();
+        _waveOut.Init(new WaveToSampleProvider(_reader));
 
         _isSoundMuted = true;
         _isAlarmMuted = false;
@@ -39,7 +36,6 @@ public partial class SettingsViewModel : ObservableViewModelBase, IRecipient<Ala
         });
         MuteAlarm = new RelayCommand(() => _alarmCancellation?.Cancel());
 
-
         _messenger.Register(this);
     }
 
@@ -55,10 +51,18 @@ public partial class SettingsViewModel : ObservableViewModelBase, IRecipient<Ala
             {
                 IsAlarmActive = false;
 
-                _ = Task.Run(_waveOut.Stop);
+                _waveOut.PlaybackStopped -= OnPlaybackStopped;
+                _waveOut.Stop();
             });
 
-            _ = Task.Run(_waveOut.Play);
+            _waveOut.PlaybackStopped += OnPlaybackStopped;
+            _waveOut.Play();
         }
+    }
+
+    void OnPlaybackStopped(object sender, StoppedEventArgs e)
+    {
+        _reader.Position = 0;
+        _waveOut.Play();
     }
 }

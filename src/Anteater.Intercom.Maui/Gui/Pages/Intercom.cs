@@ -24,7 +24,7 @@ public partial class Intercom : ContentPage
 
         Loaded += (_, _) =>
         {
-            _ = Task.Run(viewModel.Player.Connect);
+            viewModel.Player.Connect();
 
             Appearing += (_, _) =>
             {
@@ -33,29 +33,31 @@ public partial class Intercom : ContentPage
                     switch (message.State)
                     {
                         case WindowState.Resumed:
-                            _ = Task.Run(viewModel.Player.Connect);
+                            if (!viewModel.Player.IsConnected)
+                            {
+                                viewModel.Player.Connect();
+                            }
                             break;
 
                         case WindowState.Stopped:
-                            _ = Task.Run(viewModel.Player.Stop);
+                            viewModel.Player.Stop();
                             break;
 
                         case WindowState.Closing:
-                            _ = Task.Run(viewModel.Player.Stop);
+                            viewModel.Player.Stop();
                             break;
                     }
                 });
 
                 viewModel.ShowOverlay.Execute(true);
-
-                _ = Task.Run(viewModel.Player.Connect);
+                viewModel.Player.Connect();
             };
 
             Disappearing += (_, _) =>
             {
                 _messenger.UnregisterAll(this);
 
-                _ = Task.Run(viewModel.Player.Stop);
+                viewModel.Player.Stop();
             };
         };
     }

@@ -1,10 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Squirrel;
 
-namespace Anteater.Intercom.Services;
+namespace Anteater.Intercom;
 
 public class UpdaterService : BackgroundService
 {

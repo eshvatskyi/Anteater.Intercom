@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Anteater.Intercom.Services.Events;
@@ -11,14 +12,19 @@ public partial class AlarmEvent
         MotionDetection
     }
 
+    [JsonInclude]
     public long Timestamp { get; private set; }
 
+    [JsonInclude]
     public DateTime DateTime { get; private set; }
 
+    [JsonInclude]
     public EventType Type { get; private set; }
 
+    [JsonInclude]
     public bool Status { get; private set; }
 
+    [JsonInclude]
     public ushort[] Numbers { get; private set; }
 
     public static bool TryParse(string value, out AlarmEvent alarmEvent)

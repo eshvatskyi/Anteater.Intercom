@@ -34,21 +34,19 @@ public partial class App : MauiWinUIApplication
                 {
                     if (appWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
                     {
-                        window.ExtendsContentIntoTitleBar = false;
-
                         appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
                         appWindow.Resize(new() { Width = 800, Height = 600 });
-                        appWindow.Move(new() { X = (displayArea.WorkArea.Width - 800) / 2, Y = (displayArea.WorkArea.Height - 600) / 2 });                        
+                        appWindow.Move(new() { X = (displayArea.WorkArea.Width - 800) / 2, Y = (displayArea.WorkArea.Height - 600) / 2 });
                     }
                     else
                     {
-                        window.ExtendsContentIntoTitleBar = true;
-
                         appWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
                     }
                 }
 
                 events.AddEvent("WindowFullScreenSwitchRequested", SwitchWindowFullScreenState);
+
+                window.ExtendsContentIntoTitleBar = false;
 
                 SwitchWindowFullScreenState();
             }));
@@ -61,7 +59,8 @@ public partial class App : MauiWinUIApplication
 
         builder.Services.AddSingleton(x => FirebaseMessaging.GetMessaging(x.GetRequiredService<FirebaseApp>()));
 
-        builder.Services.AddHostedService<PushNotificationService>();
+        builder.Services.AddHostedService<RemoteNotificationsService>();
+        builder.Services.AddHostedService<UpdaterService>();
 
         return builder;
     }

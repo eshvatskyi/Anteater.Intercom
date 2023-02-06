@@ -13,7 +13,13 @@ public partial class IntercomViewModel
         {
             if (initializeTimers == false)
             {
-                _hideOverlayTask = _hideOverlayTask.ContinueWith(_ => Player.Connect());
+                _hideOverlayTask = _hideOverlayTask.ContinueWith(_ =>
+                {
+                    if (!Player.IsConnected)
+                    {
+                        Player.Connect();
+                    }
+                });
             }
 
             _ = Task.Delay(TimeSpan.FromSeconds(15), _hideOverlayCancellation.Token).ContinueWith(delegate
