@@ -1,9 +1,8 @@
-using CSCore;
-using CSCore.SoundOut;
+using NAudio.Wave;
 
 namespace Anteater.Intercom.Services.Audio;
 
-public partial class AudioPlayback : IWaveSource
+public partial class AudioPlayback : IWaveProvider
 {
     private WaveOut _soundOut;
 
@@ -19,13 +18,16 @@ public partial class AudioPlayback : IWaveSource
 
     private partial void InnerInit(int sampleRate, int channels)
     {
-        WaveFormat = new WaveFormat(sampleRate, 16, channels);        
+        WaveFormat = new WaveFormat(sampleRate, 16, channels);
     }
 
     public partial void Start()
     {
-        _soundOut.Initialize(this);
-        _soundOut.Play();
+        if (WaveFormat is not null)
+        {
+            _soundOut.Init(this);
+            _soundOut.Play();
+        }
     }
 
     public partial void Stop()
@@ -33,13 +35,7 @@ public partial class AudioPlayback : IWaveSource
         _soundOut?.Stop();
     }
 
-    public bool CanSeek { get; } = false;
-
     public WaveFormat WaveFormat { get; private set; }
-
-    public long Position { get; set; }
-
-    public long Length => _buffer.Length;
 
     public int Read(byte[] buffer, int offset, int count)
     {
@@ -54,6 +50,4 @@ public partial class AudioPlayback : IWaveSource
 
         return num;
     }
-
-    public void Dispose() { }
 }

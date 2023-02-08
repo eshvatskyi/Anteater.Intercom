@@ -11,6 +11,8 @@ public partial class AudioRecord : IAudioRecord
 
     public event IAudioRecord.DataAvailableEventHandler DataAvailable;
 
+    public event IAudioRecord.StoppedEventHandler Stopped;
+
     public AVSampleFormat Format { get; private set; }
 
     public int SampleRate { get; private set; }

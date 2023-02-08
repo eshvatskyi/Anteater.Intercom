@@ -277,4 +277,4 @@ Thumbs.db
 
 *.settings
 
-GoogleService-Info.plist
+GoogleService-Info.*

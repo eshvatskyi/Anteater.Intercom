@@ -17,6 +17,7 @@ public class SettingsConfigurationProvider : ConfigurationProvider
             WebPort = Data.TryGetValue(nameof(ConnectionSettings.WebPort), out var webPort) ? Convert.ToInt32(webPort) : defaultSettings.WebPort,
             RtspPort = Data.TryGetValue(nameof(ConnectionSettings.RtspPort), out var rtspPort) ? Convert.ToInt32(rtspPort) : defaultSettings.RtspPort,
             DataPort = Data.TryGetValue(nameof(ConnectionSettings.DataPort), out var dataPort) ? Convert.ToInt32(dataPort) : defaultSettings.DataPort,
+            DeviceId = Data.TryGetValue(nameof(ConnectionSettings.DeviceId), out var deviceId) ? deviceId : defaultSettings.DeviceId,
         };
 
         var newSettings = new ConnectionSettings
@@ -27,6 +28,7 @@ public class SettingsConfigurationProvider : ConfigurationProvider
             WebPort = Preferences.Default.Get(nameof(ConnectionSettings.WebPort), defaultSettings.WebPort),
             RtspPort = Preferences.Default.Get(nameof(ConnectionSettings.RtspPort), defaultSettings.RtspPort),
             DataPort = Preferences.Default.Get(nameof(ConnectionSettings.DataPort), defaultSettings.DataPort),
+            DeviceId = Preferences.Default.Get(nameof(ConnectionSettings.DeviceId), defaultSettings.DeviceId),
         };
 
         Data.Clear();
@@ -37,6 +39,7 @@ public class SettingsConfigurationProvider : ConfigurationProvider
         Data.Add(nameof(ConnectionSettings.WebPort), newSettings.WebPort.ToString());
         Data.Add(nameof(ConnectionSettings.RtspPort), newSettings.RtspPort.ToString());
         Data.Add(nameof(ConnectionSettings.DataPort), newSettings.DataPort.ToString());
+        Data.Add(nameof(ConnectionSettings.DeviceId), newSettings.DeviceId.ToString());
 
         if (oldSettings != newSettings)
         {

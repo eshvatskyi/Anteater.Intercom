@@ -5,5 +5,6 @@ public record WindowStateChanged(WindowState State);
 public enum WindowState
 {
     Stopped,
-    Resumed
+    Resumed,
+    Closing
 }

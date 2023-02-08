@@ -24,8 +24,8 @@ public class AcceptHeader
         writer.Write(Flag);
         writer.Write(SocketType);
         writer.Write(Misc);
-        writer.WriteString(Username ?? string.Empty, 17, EncryptionPhase);
-        writer.WriteString(Password ?? string.Empty, 17, EncryptionPhase);
-        writer.WriteString(DeviceName ?? string.Empty, 66);
+        writer.WriteString(Username ?? "", 17, EncryptionPhase);
+        writer.WriteString(Password ?? "", 17, EncryptionPhase);
+        writer.WriteString(DeviceName ?? "", 66);
     }
 }

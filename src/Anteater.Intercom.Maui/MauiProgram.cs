@@ -1,4 +1,5 @@
 using Anteater.Intercom.Gui;
+using Anteater.Intercom.Gui.ViewModels;
 using Anteater.Intercom.Services;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Events;
@@ -8,15 +9,18 @@ using Anteater.Intercom.Settings;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
+using Sharp.UI;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 
 namespace Anteater.Intercom;
 
-public static class MauiProgram
+public static partial class MauiProgram
 {
-    public static MauiApp CreateMauiApp()
+    public static MauiApp CreateMauiApp(Func<MauiAppBuilder, MauiAppBuilder> configurePlatformServices = null)
     {
-        return MauiApp
+        var builder = MauiApp
             .CreateBuilder()
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
@@ -27,9 +31,16 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             })
             .ConfigureSettings()
+            .ConfigureLogging()
             .ConfigureServices()
-            .ConfigureViewModels()
-            .Build();
+            .ConfigureViews()
+            .ConfigureViewModels();
+
+        configurePlatformServices?.Invoke(builder);
+
+        var app = builder.Build();
+
+        return app;
     }
 
     static MauiAppBuilder ConfigureSettings(this MauiAppBuilder builder)
@@ -50,16 +61,57 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAudioRecord, AudioRecord>();
 
         builder.Services.AddSingleton<ReversChannelService>();
+        builder.Services.AddHostedService(x => x.GetRequiredService<ReversChannelService>());
         builder.Services.AddSingleton<IReversAudioService>(x => x.GetRequiredService<ReversChannelService>());
         builder.Services.AddSingleton<IDoorLockService>(x => x.GetRequiredService<ReversChannelService>());
 
-        builder.Services.AddSingleton<BackgroundService, AlarmEventsService>();
+        builder.Services.AddHostedService<AlarmEventsService>();
+
+        return builder;
+    }
+
+    static MauiAppBuilder ConfigureLogging(this MauiAppBuilder builder)
+    {
+        builder.Services.AddLogging(logging =>
+        {
+            logging.ClearProviders();
+
+#if WINDOWS
+            logging.AddDebug();
+#else
+            logging.AddConsole(opts => opts.FormatterName = nameof(ConsoleLogFormatter));
+            logging.AddConsoleFormatter<ConsoleLogFormatter, ConsoleFormatterOptions>(opts =>
+            {
+                opts.IncludeScopes = false;
+            });
+#endif
+
+#if DEBUG
+            logging.SetMinimumLevel(LogLevel.Debug);
+#else
+            logging.SetMinimumLevel(LogLevel.Information);
+#endif
+        });
+
+        return builder;
+    }
+
+    static MauiAppBuilder ConfigureViews(this MauiAppBuilder builder)
+    {
+        builder.Services.AddSingleton<Gui.Pages.Intercom>();
+        builder.Services.AddSingleton<Gui.Pages.Settings>();
 
         return builder;
     }
 
     static MauiAppBuilder ConfigureViewModels(this MauiAppBuilder builder)
     {
+        builder.Services.AddTransient<PlayerViewModel>();
+        builder.Services.AddTransient<DoorViewModel>();
+        builder.Services.AddTransient<CallViewModel>();
+        builder.Services.AddTransient<SettingsViewModel>();
+        builder.Services.AddTransient<IntercomViewModel>();
+
         return builder;
     }
 }

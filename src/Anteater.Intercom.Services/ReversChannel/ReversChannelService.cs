@@ -2,23 +2,25 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using Anteater.Intercom.Services.Events;
 using Anteater.Intercom.Services.ReversChannel.Headers;
 using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
 using FFmpeg.AutoGen.Abstractions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom.Services.ReversChannel;
 
-public class ReversChannelService : IReversAudioService, IDoorLockService, IRecipient<AlarmEvent>
+public class ReversChannelService : BackgroundService, IReversAudioService, IDoorLockService, IRecipient<AlarmEvent>
 {
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     private readonly IMessenger _messenger;
-
     private ConnectionSettings _settings;
-    private bool _isDuplexMode;
+    private readonly ILogger _logger;
 
     private TcpClient _client;
     private NetworkStream _stream;
@@ -27,18 +29,28 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
     private QueuedBuffer _buffer;
     private AudioEncoder _encoder;
 
-    public ReversChannelService(IMessenger messenger, IOptionsMonitor<ConnectionSettings> connectionSettings)
+    private bool _isDuplexMode = true;
+    private CancellationTokenSource _duplexModeTimerCancellation;
+
+    public ReversChannelService(IMessenger messenger, IOptionsMonitor<ConnectionSettings> connectionSettings, ILoggerFactory logger)
     {
         _messenger = messenger;
-
         _messenger.Register(this);
 
         _settings = connectionSettings.CurrentValue;
 
-        connectionSettings.OnChange(settings =>
-        {
-            _settings = settings;
-        });
+        connectionSettings.OnChange(settings => _settings = settings);
+
+        _logger = logger.CreateLogger<ReversChannelService>();
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var tcs = new TaskCompletionSource();
+
+        stoppingToken.Register(tcs.SetCanceled);
+
+        await tcs.Task;
     }
 
     public bool IsOpen { get; private set; }
@@ -47,8 +59,6 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
     {
         try
         {
-            _isDuplexMode = true;
-
             var infoHeader = await OpenAsync();
 
             _encoder = GetEncoder(infoHeader, format, sampleRate, channels);
@@ -146,7 +156,7 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
 
             if (IsOpen)
             {
-                await Task.Run(async delegate
+                await Task.Run(async () =>
                 {
                     var encodedData = _encoder.Encode(data);
 
@@ -155,15 +165,14 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
                     await _stream.FlushAsync();
                 });
             }
+
+            _semaphore.Release();
         }
         catch
         {
+            _semaphore.Release();
             Disconnect();
             throw;
-        }
-        finally
-        {
-            _semaphore.Release();
         }
     }
 
@@ -183,9 +192,9 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
 
     public async Task<(bool Status, string Message)> UnlockDoorAsync()
     {
-        var isDuplexMode = _isDuplexMode;
+        var isDuplexMode = IsOpen && _isDuplexMode;
 
-        if (_isDuplexMode)
+        if (isDuplexMode)
         {
             Disconnect();
         }
@@ -231,7 +240,7 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
             Host = _settings.Host,
             Port = _settings.WebPort,
             Path = "cgi-bin/alarmout_cgi",
-            Query = $"action=set&user={_settings.Username}&pwd={_settings.Password}&Output=0&Status=1",
+            Query = $"action=set&Output=0&Status=1",
         };
 
         using var client = new HttpClient();
@@ -239,7 +248,7 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Username}:{_settings.Password}")));
 
         var response = await client.GetAsync(uriBuilder.Uri);
-        var content = response.Content != null ? await response.Content.ReadAsStringAsync() : string.Empty;
+        var content = response.Content != null ? await response.Content.ReadAsStringAsync() : "";
 
         return (response.IsSuccessStatusCode, content);
     }
@@ -266,12 +275,34 @@ public class ReversChannelService : IReversAudioService, IDoorLockService, IReci
         }
     }
 
-    async void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
+    void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
     {
+        _logger.LogDebug($"AlarmEvent.Received: {JsonSerializer.Serialize(message)}");
+
         if (message.Status && message.Type == AlarmEvent.EventType.SensorAlarm && message.Numbers is [1, ..])
         {
-            await OpenAsync();
-            _isDuplexMode |= false;
+            _isDuplexMode = false;
+
+            _duplexModeTimerCancellation?.Cancel();
+            _duplexModeTimerCancellation = new CancellationTokenSource();
+
+            var timeout = TimeSpan.FromSeconds(10) - TimeSpan.FromTicks(DateTime.UtcNow.Ticks - message.Timestamp);
+
+            _logger.LogDebug($"AlarmEvent.Received: With timeout, {timeout.TotalSeconds} secs");
+
+            if (timeout.TotalSeconds > 0)
+            {
+                Task.Delay(TimeSpan.FromSeconds(10), _duplexModeTimerCancellation.Token).ContinueWith(x =>
+                {
+                    _isDuplexMode = true;
+                    Disconnect();
+                }, TaskContinuationOptions.OnlyOnRanToCompletion);
+            }
+            else
+            {
+                _isDuplexMode = true;
+                Disconnect();
+            }
         }
     }
 }

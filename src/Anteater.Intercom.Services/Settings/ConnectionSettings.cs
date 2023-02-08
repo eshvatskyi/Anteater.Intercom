@@ -13,4 +13,6 @@ public record ConnectionSettings
     public int RtspPort { get; set; } = 554;
 
     public int DataPort { get; set; } = 5000;
+
+    public string DeviceId { get; set; } = "";
 }
