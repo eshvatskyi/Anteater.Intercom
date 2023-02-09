@@ -1,14 +1,15 @@
-using Anteater.Intercom.Gui.Messages;
+using Anteater.Intercom.Features.Intercom;
+using Anteater.Intercom.Messages;
+using CommunityToolkit.Maui.Markup;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
+using Application = Microsoft.Maui.Controls.Application;
+using NavigationPage = Microsoft.Maui.Controls.NavigationPage;
 using Page = Microsoft.Maui.Controls.Page;
 
-namespace Anteater.Intercom.Gui;
-
-using System;
-using Sharp.UI;
+namespace Anteater.Intercom;
 
 public class App : Application
 {
@@ -16,31 +17,29 @@ public class App : Application
     private readonly IEnumerable<IHostedService> _hostedServices;
     private readonly CancellationTokenSource _stoppingTokenSource = new();
 
-    public App(IMessenger messenger, IEnumerable<IHostedService> hostedServices, Pages.Intercom intercomPage)
+    public App(IMessenger messenger, IEnumerable<IHostedService> hostedServices, IntercomPage intercomPage)
     {
         _messenger = messenger;
         _hostedServices = hostedServices;
 
-        MainPage = new NavigationPage(x => x
-            .Resources(new ResourceDictionary
-            {
-                new Style<NavigationPage>(applyToDerivedTypes: true)
-                {
-                    NavigationPage.BarBackgroundColorProperty.Set(Colors.Black),
-                    NavigationPage.BarTextColorProperty.Set(Colors.White),
-                    NavigationPage.IconColorProperty.Set(Colors.White),
-                },
-                new Style<Page>(applyToDerivedTypes: true)
-                {
-                    Page.PaddingProperty.Set(0),
-                    Page.BackgroundColorProperty.Set(Colors.Black),
-                }
-            })
-            .On<iOS>().EnableTranslucentNavigationBar()
-        )
+        MainPage = new NavigationPage(intercomPage)
         {
-            intercomPage
-        };
+            Resources = new ResourceDictionary
+            {
+                new Style<NavigationPage>(
+                    (NavigationPage.BarBackgroundColorProperty, Colors.Black),
+                    (NavigationPage.BarTextColorProperty, Colors.White),
+                    (NavigationPage.IconColorProperty, Colors.White)
+                )
+                .ApplyToDerivedTypes(true),
+
+                new Style<Page>(
+                    (Page.PaddingProperty, 0),
+                    (Microsoft.Maui.Controls.VisualElement.BackgroundColorProperty, Colors.Black)
+                )
+                .ApplyToDerivedTypes(true),
+            },
+        }.Invoke(x => x.On<iOS>().EnableTranslucentNavigationBar());
     }
 
     protected override Window CreateWindow(IActivationState activationState)

@@ -43,10 +43,10 @@
   <ItemGroup>
     <PackageReference Include="Clowd.Squirrel" Version="2.9.42" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="CommunityToolkit.Maui" Version="4.0.0" />
+    <PackageReference Include="CommunityToolkit.Maui.Markup" Version="3.0.0" />    
     <PackageReference Include="FFmpeg.AutoGen.Bindings.StaticallyLinked" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-ios')) == true" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="FirebaseAdmin" Version="2.3.0" Condition="$(TargetFramework.Contains('-windows')) == true" />
-    <PackageReference Include="Sharp.UI" Version="0.2.5-alpha.1" />
     <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="2.88.3" />
     <PackageReference Include="Xamarin.Firebase.iOS.CloudMessaging" Version="8.10.0.3" Condition="$(TargetFramework.Contains('-ios')) == true" />
   </ItemGroup>

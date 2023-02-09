@@ -1,9 +1,10 @@
 using System.ComponentModel;
+using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Events;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 
-namespace Anteater.Intercom.Gui.ViewModels;
+namespace Anteater.Intercom.Features.Intercom;
 
 public partial class IntercomViewModel : ObservableViewModelBase, IRecipient<AlarmEvent>
 {
@@ -85,6 +86,8 @@ public partial class IntercomViewModel : ObservableViewModelBase, IRecipient<Ala
     {
         IsOverlayVisible = true;
         ApplyOverlayChanges();
+
+        Player.IsSoundMuted(Settings.IsSoundMuted);
 
         if (Settings.IsAlarmActive)
         {

@@ -54,6 +54,7 @@ if ($p -like "iOS")
     -p:CodesignProvision="com.anteater.intercom iOS Distribution Ad Hoc" `
     -p:CodesignEntitlements="Platforms\iOS\Entitlements.production.plist" `
     -p:ServerAddress=10.0.1.100 `
+    -p:TcpPort=58181 `
     -p:ServerUser=$user `
     -p:ServerPassword=$pwd `
     -p:_DotNetRootRemoteDirectory=/Users/$user/Library/Caches/Xamarin/XMA/SDKs/dotnet/
