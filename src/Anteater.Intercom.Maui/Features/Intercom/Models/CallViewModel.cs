@@ -1,8 +1,9 @@
+using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.ReversChannel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace Anteater.Intercom.Gui.ViewModels;
+namespace Anteater.Intercom.Features.Intercom;
 
 public partial class CallViewModel : ObservableViewModelBase
 {

@@ -1,14 +1,12 @@
-namespace Anteater.Intercom.Gui.Controls;
-
-using Sharp.UI;
+namespace Anteater.Intercom.Features.Settings;
 
 public class SettingEntry : Entry
 {
-    public static readonly BindableProperty KeyProperty =
-        BindableProperty.Create(nameof(Key), typeof(string), typeof(SettingEntry), null);
+    public static readonly BindableProperty KeyProperty = BindableProperty
+        .Create(nameof(Key), typeof(string), typeof(SettingEntry), null);
 
-    public static readonly BindableProperty DefaultProperty =
-        BindableProperty.Create(nameof(Default), typeof(string), typeof(SettingEntry), null);
+    public static readonly BindableProperty DefaultProperty = BindableProperty
+        .Create(nameof(Default), typeof(string), typeof(SettingEntry), null);
 
     public string Key
     {

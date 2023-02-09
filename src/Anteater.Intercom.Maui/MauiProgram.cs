@@ -1,5 +1,5 @@
-using Anteater.Intercom.Gui;
-using Anteater.Intercom.Gui.ViewModels;
+using Anteater.Intercom.Features.Intercom;
+using Anteater.Intercom.Features.Settings;
 using Anteater.Intercom.Services;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Events;
@@ -7,11 +7,11 @@ using Anteater.Intercom.Services.ReversChannel;
 using Anteater.Intercom.Services.Settings;
 using Anteater.Intercom.Settings;
 using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Markup;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
-using Sharp.UI;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 
 namespace Anteater.Intercom;
@@ -24,6 +24,7 @@ public static partial class MauiProgram
             .CreateBuilder()
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit()
+            .UseMauiCommunityToolkitMarkup()
             .UseSkiaSharp()
             .ConfigureFonts(fonts =>
             {
@@ -98,8 +99,8 @@ public static partial class MauiProgram
 
     static MauiAppBuilder ConfigureViews(this MauiAppBuilder builder)
     {
-        builder.Services.AddSingleton<Gui.Pages.Intercom>();
-        builder.Services.AddSingleton<Gui.Pages.Settings>();
+        builder.Services.AddSingleton<IntercomPage>();
+        builder.Services.AddSingleton<SettingsPage>();
 
         return builder;
     }

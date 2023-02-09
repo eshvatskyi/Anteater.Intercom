@@ -1,3 +1,4 @@
+using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Rtsp;
 using Anteater.Intercom.Services.Settings;
@@ -5,7 +6,7 @@ using Microsoft.Extensions.Options;
 using SkiaSharp;
 using SkiaSharp.Views.Maui.Controls;
 
-namespace Anteater.Intercom.Gui.ViewModels;
+namespace Anteater.Intercom.Features.Intercom;
 
 public partial class PlayerViewModel : ObservableViewModelBase
 {

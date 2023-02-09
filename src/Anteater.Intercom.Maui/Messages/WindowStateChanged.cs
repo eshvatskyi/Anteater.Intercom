@@ -1,4 +1,4 @@
-namespace Anteater.Intercom.Gui.Messages;
+namespace Anteater.Intercom.Messages;
 
 public record WindowStateChanged(WindowState State);
 

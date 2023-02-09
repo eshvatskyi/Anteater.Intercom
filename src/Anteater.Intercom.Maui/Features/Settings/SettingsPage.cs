@@ -1,98 +1,88 @@
 using System.Net.Http.Headers;
 using System.Text;
-using Anteater.Intercom.Gui.Behaviors;
-using Anteater.Intercom.Gui.Controls;
+using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Settings;
 using Anteater.Intercom.Settings;
+using CommunityToolkit.Maui.Markup;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Maui.Layouts;
 
-namespace Anteater.Intercom.Gui.Pages;
+namespace Anteater.Intercom.Features.Settings;
 
-using Sharp.UI;
-
-public class Settings : ContentPage
+public class SettingsPage : ContentPageBase
 {
     private readonly IConfiguration _configuration;
 
-    public Settings(IConfiguration configuration)
+    public SettingsPage(IConfiguration configuration)
     {
         _configuration = configuration;
 
         NavigationPage.SetHasNavigationBar(this, false);
-
-        Build();
     }
 
-    private void Build()
+    protected override void Build()
     {
-        Content = new AbsoluteLayout()
+        Content = new AbsoluteLayout
         {
-            new AbsoluteLayout(x => x
-                .Padding(new Thickness(20, 10))
-                .AbsoluteLayoutBounds(new Rect(0, 0, 1, 40))
-                .AbsoluteLayoutFlags(AbsoluteLayoutFlags.PositionProportional | AbsoluteLayoutFlags.WidthProportional))
+            new AbsoluteLayout
             {
                 new Button()
                     .Text("Back")
                     .TextColor(Colors.White)
-                    .OnClicked(_ => SendBackButtonPressed())
-                    .AbsoluteLayoutBounds(new Rect(0, 0.5, -1, -1))
-                    .AbsoluteLayoutFlags(AbsoluteLayoutFlags.PositionProportional),
+                    .TapGesture(() => SendBackButtonPressed())
+                    .LayoutFlags(AbsoluteLayoutFlags.PositionProportional)
+                    .LayoutBounds(0, 0.5, -1, -1),
+
                 new Label()
                     .Text("Settings")
                     .TextColor(Colors.White)
-                    .FontAttributes(FontAttributes.Bold)
-                    .FontSize(18)
-                    .AbsoluteLayoutBounds(new Rect(0.5, 0.5, -1, -1))
-                    .AbsoluteLayoutFlags(AbsoluteLayoutFlags.PositionProportional),
-            },
-            new VerticalStackLayout(x => x
-                .Padding(new Thickness(20, 10))
-                .Spacing(10)
-                .AbsoluteLayoutBounds(new Rect(0, 40, 1, 1))
-                .AbsoluteLayoutFlags(AbsoluteLayoutFlags.XProportional | AbsoluteLayoutFlags.SizeProportional)
-            )
+                    .Font(size: 18, bold: true)
+                    .LayoutFlags(AbsoluteLayoutFlags.PositionProportional)
+                    .LayoutBounds(0.5, 0.5, -1, -1),
+            }
+            .Padding(20, 10)
+            .LayoutFlags(AbsoluteLayoutFlags.PositionProportional | AbsoluteLayoutFlags.WidthProportional)
+            .LayoutBounds(0, 0, 1, 40),
+
+            new VerticalStackLayout
             {
-                new SettingEntry()
+                new SettingEntry { ReturnType = ReturnType.Next, }
                     .Placeholder("Host")
-                    .Key("Host")
-                    .ReturnType(ReturnType.Next),
-                new SettingEntry()
+                    .Key("Host"),
+
+                new SettingEntry { ReturnType = ReturnType.Next, }
                     .Placeholder("Username")
-                    .Key("Username")
-                    .ReturnType(ReturnType.Next),
-                new SettingEntry()
+                    .Key("Username"),
+
+                new SettingEntry { IsPassword = true, ReturnType = ReturnType.Next, }
                     .Placeholder("Password")
-                    .Key("Password")
-                    .IsPassword(true)
-                    .ReturnType(ReturnType.Next),
-                new SettingEntry()
+                    .Key("Password"),
+
+                new SettingEntry { Keyboard = Keyboard.Numeric, ReturnType = ReturnType.Next, }
                     .Placeholder("WebPort")
                     .Key("WebPort")
-                    .Default("80")
-                    .Keyboard(Keyboard.Numeric)
-                    .ReturnType(ReturnType.Next),
-                new SettingEntry()
+                    .Default("80"),
+
+                new SettingEntry { Keyboard = Keyboard.Numeric, ReturnType = ReturnType.Next, }
                     .Placeholder("RtspPort")
                     .Key("RtspPort")
-                    .Default("554")
-                    .Keyboard(Keyboard.Numeric)
-                    .ReturnType(ReturnType.Next),
-                new SettingEntry()
+                    .Default("554"),
+
+                new SettingEntry { Keyboard = Keyboard.Numeric, ReturnType = ReturnType.Next, }
                     .Placeholder("DataPort")
                     .Key("DataPort")
-                    .Default("5000")
-                    .Keyboard(Keyboard.Numeric)
-                    .ReturnType(ReturnType.Next),
+                    .Default("5000"),
             }
-        }.Resources(new ResourceDictionary
+            .Spacing(10)
+            .Padding(20, 10)
+            .LayoutFlags(AbsoluteLayoutFlags.XProportional | AbsoluteLayoutFlags.SizeProportional)
+            .LayoutBounds(0, 40, 1, 1),
+        };
+
+        Resources = new ResourceDictionary
         {
-            new Style<SettingEntry>
-            {
-                SettingBehavior.AttachedProperty.Set(true)
-            }
-        });
+            new Style<SettingEntry>(SettingBehavior.AttachBehaviorProperty, true),
+        };
     }
 
     protected override bool OnBackButtonPressed()

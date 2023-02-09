@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Anteater.Intercom.Gui.ViewModels;
+namespace Anteater.Intercom.Core;
 
 public abstract class ObservableViewModelBase : INotifyPropertyChanged
 {

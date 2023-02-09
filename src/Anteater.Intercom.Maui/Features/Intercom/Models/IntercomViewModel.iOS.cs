@@ -1,4 +1,4 @@
-namespace Anteater.Intercom.Gui.ViewModels;
+namespace Anteater.Intercom.Features.Intercom;
 
 public partial class IntercomViewModel
 {
