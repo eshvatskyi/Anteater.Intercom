@@ -5,9 +5,7 @@ namespace Anteater.Intercom.Services.Audio;
 
 public partial class AudioRecord
 {
-    private AVAudioEngine _engine;
-    private AVAudioFormat _format;
-    private AVAudioMixerNode _mixer;
+    private CancellationTokenSource _workerCancellation;
 
     private partial void Init()
     {
@@ -15,26 +13,6 @@ public partial class AudioRecord
 
         audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, AVAudioSessionCategoryOptions.DefaultToSpeaker);
         audioSession.SetActive(true);
-
-        _engine = new AVAudioEngine();
-
-        var inputFormat = _engine.InputNode.GetBusOutputFormat(0);
-
-        Format = AVSampleFormat.AV_SAMPLE_FMT_FLTP;
-        SampleRate = (int)inputFormat.SampleRate;
-        Channels = 1;
-
-        _format = new AVAudioFormat(inputFormat.CommonFormat, SampleRate, (uint)Channels, false);
-
-        _mixer = new AVAudioMixerNode { Volume = 0 };
-
-        _engine.AttachNode(_mixer);
-
-        _engine.Connect(_engine.InputNode, _mixer, inputFormat);
-
-        _engine.Connect(_mixer, _engine.MainMixerNode, _format);
-
-        _engine.Prepare();
 
         switch (audioSession.RecordPermission)
         {
@@ -48,6 +26,10 @@ public partial class AudioRecord
                 return;
 
         };
+
+        Format = AVSampleFormat.AV_SAMPLE_FMT_FLTP;
+        SampleRate = 44100;
+        Channels = 1;
     }
 
     public partial void Start()
@@ -57,16 +39,47 @@ public partial class AudioRecord
             return;
         }
 
-        _mixer.InstallTapOnBus(0, 512, _format, OnDataAvailable);
+        _workerCancellation = new CancellationTokenSource();
 
-        _engine.StartAndReturnError(out _);
+        _ = StartRecordingAsync(_workerCancellation.Token);
     }
 
     public partial void Stop()
     {
-        _mixer.RemoveTapOnBus(0);
+        _workerCancellation?.Cancel();
+    }
 
-        _engine.Stop();
+    async Task StartRecordingAsync(CancellationToken stoppingToken)
+    {
+        var engine = new AVAudioEngine();
+
+        var inputFormat = engine.InputNode.GetBusOutputFormat(0);
+
+        var format = new AVAudioFormat(inputFormat.CommonFormat, SampleRate, (uint)Channels, false);
+
+        var mixer = new AVAudioMixerNode { Volume = 0 };
+
+        engine.AttachNode(mixer);
+
+        engine.Connect(engine.InputNode, mixer, inputFormat);
+
+        engine.Connect(mixer, engine.MainMixerNode, format);
+
+        engine.Prepare();
+
+        mixer.InstallTapOnBus(0, 512, format, OnDataAvailable);
+
+        engine.StartAndReturnError(out _);
+
+        var tcs = new TaskCompletionSource();
+
+        stoppingToken.Register(() => tcs.TrySetResult());
+
+        await tcs.Task;
+
+        mixer.RemoveTapOnBus(0);
+
+        engine.Stop();
     }
 
     void OnDataAvailable(AVAudioPcmBuffer buffer, AVAudioTime when)

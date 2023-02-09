@@ -7,89 +7,87 @@ public partial class AudioPlayback
 {
     private readonly byte[] _samplesBuffer = new byte[1024];
 
-    private AVAudioEngine _engine;
-    private AVAudioPlayerNode _player;
-    private AVAudioPcmBuffer _audioBuffer;
-
-    private bool _initialized = false;
-    private bool _running = false;
-    private Task _lastTask = Task.CompletedTask;
+    private AVAudioFormat _format;
+    private bool _isRunning = true;
+    private CancellationTokenSource _workerCancellation;
 
     private partial bool IsStoppedInner()
     {
-        return _running == false;
+        return _isRunning == false;
     }
 
     private partial void Init()
     {
-        _lastTask = _lastTask.ContinueWith(x =>
-        {
-            var audioSession = AVAudioSession.SharedInstance();
+        var audioSession = AVAudioSession.SharedInstance();
 
-            audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, AVAudioSessionCategoryOptions.DefaultToSpeaker);
-            audioSession.SetActive(true);
-
-            _engine = new AVAudioEngine();
-
-            _player = new AVAudioPlayerNode();
-            _player.Volume = 1;
-
-            _engine.AttachNode(_player);
-        });
+        audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, AVAudioSessionCategoryOptions.DefaultToSpeaker);
+        audioSession.SetActive(true);
     }
 
     private partial void InnerInit(int sampleRate, int channels)
     {
-        _lastTask = _lastTask.ContinueWith(x =>
-        {
-            _engine.Stop();
-            _engine.Reset();
-
-            var format = new AVAudioFormat(sampleRate, (uint)channels);
-
-            _audioBuffer = new AVAudioPcmBuffer(format, (uint)_samplesBuffer.Length / 4);
-
-            _engine.Connect(_player, _engine.MainMixerNode, format);
-            _engine.Prepare();
-
-            _initialized = true;
-        });
+        _format = new AVAudioFormat(sampleRate, (uint)channels);
     }
 
     public partial void Start()
     {
-        _lastTask = _lastTask.ContinueWith(x =>
+        if (_format is null)
         {
-            if (!_initialized)
-            {
-                return;
-            }
+            return;
+        }
 
-            _ = Task.Run(() =>
-            {
-                _running = true;
+        _workerCancellation = new CancellationTokenSource();
 
-                _engine.StartAndReturnError(out _);
-
-                _player.Play();
-
-                ReadSamples();                
-            });
-        });
+        _ = StartPlaybackAsync(_workerCancellation.Token);
     }
 
     public partial void Stop()
     {
-        _lastTask = _lastTask.ContinueWith(x =>
-        {
-            _running = false;
-
-            _player.Stop();
-        });
+        _workerCancellation?.Cancel();
     }
 
-    void ReadSamples()
+    async Task StartPlaybackAsync(CancellationToken stoppingToken)
     {
+        _isRunning = true;
+
+        var engine = new AVAudioEngine();
+
+        var player = new AVAudioPlayerNode();
+
+        player.Volume = 1;
+
+        engine.AttachNode(player);
+
+        var pcmBuffer = new AVAudioPcmBuffer(_format, (uint)_samplesBuffer.Length / 4);
+
+        engine.Connect(player, engine.MainMixerNode, _format);
+        engine.Prepare();
+        engine.StartAndReturnError(out _);
+
+        player.Play();
+
+        ReadSamples(pcmBuffer, player);
+
+        var tcs = new TaskCompletionSource();
+
+        stoppingToken.Register(() => tcs.TrySetResult());
+
+        await tcs.Task;
+
+        player.Stop();
+
+        engine.Stop();
+
+        _isRunning = false;
+    }
+
+    void ReadSamples(AVAudioPcmBuffer pcmBuffer, AVAudioPlayerNode player)
+    {
+        if (_workerCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
         var num = _buffer.Read(_samplesBuffer, 0, _samplesBuffer.Length);
 
         if (num < _samplesBuffer.Length)
@@ -99,13 +97,13 @@ public partial class AudioPlayback
 
         unsafe
         {
-            var channels = (nint*)_audioBuffer.FloatChannelData.ToPointer();
+            var channels = (nint*)pcmBuffer.FloatChannelData.ToPointer();
 
             Marshal.Copy(_samplesBuffer, 0, channels[0], _samplesBuffer.Length);
 
-            _audioBuffer.FrameLength = _audioBuffer.FrameCapacity;
+            pcmBuffer.FrameLength = pcmBuffer.FrameCapacity;
         }
 
-        _player.ScheduleBuffer(_audioBuffer, ReadSamples);
+        player.ScheduleBuffer(pcmBuffer, () => ReadSamples(pcmBuffer, player));
     }
 }

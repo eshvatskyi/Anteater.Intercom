@@ -33,17 +33,29 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) == true">
     <SupportedOSPlatformVersion>14.2</SupportedOSPlatformVersion>
     <ProvisioningType>manual</ProvisioningType>
-    <CodesignKey>Apple Development: Eugen Shvatsky (2ZA34AY2CR)</CodesignKey>
-    <CodesignProvision>com.anteater.intercom iOS Development</CodesignProvision>
-    <CodesignEntitlements>Platforms\iOS\Entitlements.development.plist</CodesignEntitlements>
     <EnableSGenConc>True</EnableSGenConc>
     <!--<AdditionalArgs>-gcc_flags "-v"</AdditionalArgs>-->
   </PropertyGroup>
-  
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) == true and '$(Configuration)' == 'Debug'">
+    <CodesignKey>Apple Development: Eugen Shvatsky (2ZA34AY2CR)</CodesignKey>
+    <CodesignProvision>com.anteater.intercom iOS Development</CodesignProvision>
+    <CodesignEntitlements>Platforms\iOS\Entitlements.development.plist</CodesignEntitlements>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) == true and '$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <CodesignKey>iPhone Distribution: Eugen Shvatsky (P5UCQD88QT)</CodesignKey>
+    <CodesignProvision>com.anteater.intercom iOS Distribution Ad Hoc</CodesignProvision>
+    <CodesignEntitlements>Platforms\iOS\Entitlements.production.plist</CodesignEntitlements>
+    <ArchiveOnBuild>true</ArchiveOnBuild>
+    <TcpPort>58181</TcpPort>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Clowd.Squirrel" Version="2.9.42" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="CommunityToolkit.Maui" Version="4.0.0" />
-    <PackageReference Include="CommunityToolkit.Maui.Markup" Version="3.0.0" />    
+    <PackageReference Include="CommunityToolkit.Maui.Markup" Version="3.0.0" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.StaticallyLinked" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-ios')) == true" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="FirebaseAdmin" Version="2.3.0" Condition="$(TargetFramework.Contains('-windows')) == true" />
@@ -84,5 +96,5 @@
     <!--- is there proper was to add libs? -->
     <MauiAsset Include="Resources\Libs\Windows\*.dll" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
-  
+
 </Project>

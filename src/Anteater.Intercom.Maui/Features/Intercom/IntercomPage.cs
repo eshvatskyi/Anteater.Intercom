@@ -18,48 +18,48 @@ public partial class IntercomPage : ContentPageBase
         NavigationPage.SetHasNavigationBar(this, false);
 
         BindingContext = viewModel;
-    }
 
-    protected override void OnNavigatedTo(NavigatedToEventArgs args)
-    {
-        base.OnNavigatedTo(args);
-
-        var viewModel = BindingContext as IntercomViewModel;
-
-        _messenger.Register<WindowStateChanged>(this, (_, message) =>
+        Loaded += (_, _) =>
         {
-            switch (message.State)
+            Build();
+
+            Appearing += (_, _) =>
             {
-                case WindowState.Resumed:
-                    if (!viewModel.Player.IsConnected)
+                _messenger.Register<WindowStateChanged>(this, (_, message) =>
+                {
+                    switch (message.State)
                     {
-                        viewModel.Player.Connect();
+                        case WindowState.Resumed:
+                            if (!viewModel.Player.IsConnected)
+                            {
+                                viewModel.Player.Connect();
+                            }
+                            break;
+
+                        case WindowState.Stopped:
+                            viewModel.Player.Stop();
+                            break;
+
+                        case WindowState.Closing:
+                            viewModel.Player.Stop();
+                            break;
                     }
-                    break;
+                });
 
-                case WindowState.Stopped:
-                    viewModel.Player.Stop();
-                    break;
+                viewModel.ShowOverlay.Execute(true);
+                viewModel.Player.Connect();
+            };
 
-                case WindowState.Closing:
-                    viewModel.Player.Stop();
-                    break;
-            }
-        });
+            Disappearing += (_, _) =>
+            {
+                _messenger.UnregisterAll(this);
 
-        viewModel.ShowOverlay.Execute(true);
-        viewModel.Player.Connect();
-    }
+                viewModel.Player.Stop();
+            };
 
-    protected override void OnNavigatedFrom(NavigatedFromEventArgs args)
-    {
-        var viewModel = BindingContext as IntercomViewModel;
-
-        _messenger.UnregisterAll(this);
-
-        viewModel.Player.Stop();
-
-        base.OnNavigatedFrom(args);
+            viewModel.ShowOverlay.Execute(true);
+            viewModel.Player.Connect();
+        };
     }
 
     protected override void Build()

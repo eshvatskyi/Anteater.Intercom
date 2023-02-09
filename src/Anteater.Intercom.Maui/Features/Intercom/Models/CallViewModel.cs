@@ -88,10 +88,7 @@ public partial class CallViewModel : ObservableViewModelBase
 
         var tcs = new TaskCompletionSource();
 
-        _callStopTokenSource.Token.Register(() =>
-        {
-            tcs.TrySetCanceled();
-        });
+        _callStopTokenSource.Token.Register(() => tcs.TrySetResult());
 
         _recorder.DataAvailable += OnRecordingDataAvailable;
 

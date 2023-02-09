@@ -33,7 +33,7 @@ public class RemoteNotificationsService : BackgroundService, IRecipient<AlarmEve
     {
         var tcs = new TaskCompletionSource();
 
-        stoppingToken.Register(tcs.SetCanceled);
+        stoppingToken.Register(() => tcs.TrySetResult());
 
         await tcs.Task;
     }

@@ -47,17 +47,10 @@ if ($p -like "iOS")
     ".\src\Anteater.Intercom.Maui" `
     -f:net7.0-ios `
     -c:Release `
-    -r:ios-arm64 `
-    -o:$publishDir `
-    -p:ArchiveOnBuild=true `
-    -p:CodesignKey="iPhone Distribution: Eugen Shvatsky (P5UCQD88QT)" `
-    -p:CodesignProvision="com.anteater.intercom iOS Distribution Ad Hoc" `
-    -p:CodesignEntitlements="Platforms\iOS\Entitlements.production.plist" `
     -p:ServerAddress=10.0.1.100 `
-    -p:TcpPort=58181 `
     -p:ServerUser=$user `
     -p:ServerPassword=$pwd `
     -p:_DotNetRootRemoteDirectory=/Users/$user/Library/Caches/Xamarin/XMA/SDKs/dotnet/
 
-    Copy-Item -Path "$publishDir\Anteater.Intercom.Maui.ipa" -Destination "\\10.0.1.100\Shared\AnteaterIntercom\iOS" -Force
+    Copy-Item -Path ".\src\Anteater.Intercom.Maui\bin\Release\net7.0-ios\ios-arm64\publish\Anteater.Intercom.Maui.ipa" -Destination "\\10.0.1.100\Shared\AnteaterIntercom\iOS" -Force
 }
