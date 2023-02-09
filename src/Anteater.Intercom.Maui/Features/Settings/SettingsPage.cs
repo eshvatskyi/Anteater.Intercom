@@ -18,6 +18,8 @@ public class SettingsPage : ContentPageBase
         _configuration = configuration;
 
         NavigationPage.SetHasNavigationBar(this, false);
+
+        Build();
     }
 
     protected override void Build()

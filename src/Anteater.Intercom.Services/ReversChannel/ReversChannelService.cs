@@ -48,7 +48,7 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
     {
         var tcs = new TaskCompletionSource();
 
-        stoppingToken.Register(tcs.SetCanceled);
+        stoppingToken.Register(() => tcs.TrySetResult());
 
         await tcs.Task;
     }

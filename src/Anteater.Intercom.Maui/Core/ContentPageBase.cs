@@ -4,24 +4,22 @@ public abstract class ContentPageBase : ContentPage
 {
     protected abstract void Build();
 
-    protected override void OnNavigatedTo(NavigatedToEventArgs args)
+    protected override void OnAppearing()
     {
-        base.OnNavigatedTo(args);
-
-        Build();
+        base.OnAppearing();
 
 #if DEBUG
         HotReloadService.UpdateApplicationEvent += Refresh;
 #endif
     }
 
-    protected override void OnNavigatedFrom(NavigatedFromEventArgs args)
+    protected override void OnDisappearing()
     {
-        base.OnNavigatedFrom(args);
-
 #if DEBUG
         HotReloadService.UpdateApplicationEvent -= Refresh;
 #endif
+
+        base.OnDisappearing();
     }
 
     void Refresh(Type[] obj) => MainThread.InvokeOnMainThreadAsync(Build);
