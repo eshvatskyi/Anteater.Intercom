@@ -56,6 +56,7 @@ public partial class SettingsViewModel : ObservableViewModelBase, IRecipient<Ala
                 _waveOut.Stop();
             });
 
+            _reader.Position = 0;
             _waveOut.PlaybackStopped += OnPlaybackStopped;
             _waveOut.Play();
         }

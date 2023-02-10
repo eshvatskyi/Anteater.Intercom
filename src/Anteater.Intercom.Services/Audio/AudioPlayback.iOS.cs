@@ -16,13 +16,7 @@ public partial class AudioPlayback
         return _isRunning == false;
     }
 
-    private partial void Init()
-    {
-        var audioSession = AVAudioSession.SharedInstance();
-
-        audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, AVAudioSessionCategoryOptions.DefaultToSpeaker);
-        audioSession.SetActive(true);
-    }
+    private partial void Init() { }
 
     private partial void InnerInit(int sampleRate, int channels)
     {
