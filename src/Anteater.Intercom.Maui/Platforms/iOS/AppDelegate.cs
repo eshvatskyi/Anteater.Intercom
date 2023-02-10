@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Anteater.Intercom.Services.Events;
 using Anteater.Intercom.Services.Settings;
+using AVFoundation;
 using CommunityToolkit.Mvvm.Messaging;
 using Firebase.CloudMessaging;
 using Foundation;
@@ -61,6 +62,12 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
                     }
                 });
 
+                var audioSession = AVAudioSession.SharedInstance();
+
+                audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, AVAudioSessionCategoryOptions.DefaultToSpeaker);
+
+                audioSession.SetActive(true);
+
                 return true;
             }));
         });
@@ -81,14 +88,16 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
     }
 
     [Export("messaging:didReceiveRegistrationToken:")]
-    public void RemoteNotificationsRegistrationTokenReceived(Messaging messaging, string fcmToken)
+    public void RemoteNotificationsRegistrationTokenReceived(Messaging messaging, string apnsToken)
     {
-        _logger.LogDebug($"Firebase token: {fcmToken}.");
+        _logger.LogDebug($"Remote notifications token received: {apnsToken}.");
+
+        messaging.SetApnsToken(apnsToken, ApnsTokenType.Unknown);
 
         if (!string.IsNullOrWhiteSpace(_settings?.DeviceId))
         {
-            Messaging.SharedInstance.Subscribe($"{_settings.DeviceId}.call");
-            Messaging.SharedInstance.Subscribe($"{_settings.DeviceId}.motion");
+            messaging.Subscribe($"{_settings.DeviceId}.call");
+            messaging.Subscribe($"{_settings.DeviceId}.motion");
         }
     }
 

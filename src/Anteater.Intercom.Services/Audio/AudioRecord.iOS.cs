@@ -9,10 +9,11 @@ public partial class AudioRecord
 
     private partial void Init()
     {
-        var audioSession = AVAudioSession.SharedInstance();
+        Format = AVSampleFormat.AV_SAMPLE_FMT_FLTP;
+        SampleRate = 44100;
+        Channels = 1;
 
-        audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, AVAudioSessionCategoryOptions.DefaultToSpeaker);
-        audioSession.SetActive(true);
+        var audioSession = AVAudioSession.SharedInstance();
 
         switch (audioSession.RecordPermission)
         {
@@ -26,15 +27,13 @@ public partial class AudioRecord
                 return;
 
         };
-
-        Format = AVSampleFormat.AV_SAMPLE_FMT_FLTP;
-        SampleRate = 44100;
-        Channels = 1;
     }
 
     public partial void Start()
     {
-        if (AVAudioSession.SharedInstance().RecordPermission != AVAudioSessionRecordPermission.Granted)
+        var audioSession = AVAudioSession.SharedInstance();
+
+        if (audioSession.RecordPermission != AVAudioSessionRecordPermission.Granted)
         {
             return;
         }
