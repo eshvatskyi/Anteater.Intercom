@@ -15,8 +15,8 @@
     <ApplicationTitle>Anteater Intercom</ApplicationTitle>
     <ApplicationId>com.anteater.intercom</ApplicationId>
     <ApplicationIdGuid>fea64eb9-8675-4338-8773-1b2d5b06192a</ApplicationIdGuid>
-    <ApplicationDisplayVersion>1.0.8</ApplicationDisplayVersion>
-    <ApplicationVersion>8</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.9</ApplicationDisplayVersion>
+    <ApplicationVersion>9</ApplicationVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) == true">

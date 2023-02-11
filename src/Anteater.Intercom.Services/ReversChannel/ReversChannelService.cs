@@ -27,6 +27,7 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
     private BinaryWriter _writer;
     private AudioPacketFactory _audioPacketFactory;
     private QueuedBuffer _buffer;
+    private TalkInfoHeader _infoHeader;
     private AudioEncoder _encoder;
 
     private bool _isDuplexMode = true;
@@ -55,13 +56,11 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
 
     public bool IsOpen { get; private set; }
 
-    public async Task ConnectAsync(AVSampleFormat format, int sampleRate, int channels)
+    public async Task ConnectAsync()
     {
         try
         {
-            var infoHeader = await OpenAsync();
-
-            _encoder = GetEncoder(infoHeader, format, sampleRate, channels);
+            _infoHeader = await OpenAsync();
         }
         catch
         {
@@ -143,7 +142,7 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
         return new AudioEncoder(codecId, info.AudioSamples, info.AudioChannels, format, sampleRate, channels);
     }
 
-    public async Task SendAsync(byte[] data)
+    public async Task SendAsync(AVSampleFormat format, int sampleRate, int channels, byte[] data)
     {
         if (!IsOpen)
         {
@@ -156,6 +155,11 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
 
             if (IsOpen)
             {
+                if (_encoder is null)
+                {
+                    _encoder = GetEncoder(_infoHeader, format, sampleRate, channels);
+                }
+
                 await Task.Run(async () =>
                 {
                     var encodedData = _encoder.Encode(data);
@@ -268,6 +272,7 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
             _client = null;
             _writer = null;
             _audioPacketFactory = null;
+            _encoder = null;
         }
         finally
         {

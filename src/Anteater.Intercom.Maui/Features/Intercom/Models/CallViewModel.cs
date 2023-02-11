@@ -2,6 +2,7 @@ using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.ReversChannel;
 using CommunityToolkit.Mvvm.Input;
+using FFmpeg.AutoGen.Abstractions;
 
 namespace Anteater.Intercom.Features.Intercom;
 
@@ -59,7 +60,7 @@ public partial class CallViewModel : ObservableViewModelBase
         {
             try
             {
-                await _reversAudio.ConnectAsync(_recorder.Format, _recorder.SampleRate, _recorder.Channels);
+                await _reversAudio.ConnectAsync();
             }
             catch
             {
@@ -106,11 +107,11 @@ public partial class CallViewModel : ObservableViewModelBase
         await tcs.Task;
     }
 
-    async void OnRecordingDataAvailable(byte[] data)
+    async void OnRecordingDataAvailable(AVSampleFormat format, int sampleRate, int channels, byte[] data)
     {
         try
         {
-            await _reversAudio.SendAsync(data);
+            await _reversAudio.SendAsync(format, sampleRate, channels, data);
         }
         catch
         {
