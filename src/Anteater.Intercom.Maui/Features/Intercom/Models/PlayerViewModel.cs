@@ -23,6 +23,7 @@ public partial class PlayerViewModel : ObservableViewModelBase
     private int _imageWidth;
     private int _imageHeight;
     private bool _isSoundMuted;
+    private int _reconnectAttempt = 0;
 
     public PlayerViewModel(IAudioPlayback playback, IOptionsMonitor<ConnectionSettings> connectionSettings)
     {
@@ -215,9 +216,18 @@ public partial class PlayerViewModel : ObservableViewModelBase
             context.Stopped -= OnStopped;
         }
 
+        var reconnectTimeout = TimeSpan.FromSeconds(_reconnectAttempt++ switch
+        {
+            1 => 3,
+            2 => 5,
+            _ => 10
+        });
+
         _reconnectCancellation = new CancellationTokenSource();
 
-        Task.Delay(TimeSpan.FromSeconds(10), _reconnectCancellation.Token)
+        _reconnectCancellation.Token.Register(() => _reconnectAttempt = 0);
+
+        Task.Delay(reconnectTimeout, _reconnectCancellation.Token)
             .ContinueWith(_ => Connect(), TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 }

@@ -7,17 +7,12 @@ public partial class AudioRecord
 {
     private WaveInEvent _soundIn;
 
-    private partial void Init()
-    {
-        Format = AVSampleFormat.AV_SAMPLE_FMT_S16;
-        SampleRate = 44100;
-        Channels = 1;
-    }
+    private partial void Init() { }
 
     public partial void Start()
     {
         _soundIn = new WaveInEvent();
-        _soundIn.WaveFormat = new WaveFormat(SampleRate, 16, Channels);
+        _soundIn.WaveFormat = new WaveFormat(44100, 16, 1);
         _soundIn.DataAvailable += OnDataAvailable;
         _soundIn.RecordingStopped += OnStopped;
 
@@ -32,13 +27,13 @@ public partial class AudioRecord
             _soundIn.RecordingStopped -= OnStopped;
             _soundIn.StopRecording();
         }
-        
+
         Stopped?.Invoke();
     }
 
     void OnDataAvailable(object sender, WaveInEventArgs e)
     {
-        DataAvailable?.Invoke(e.Buffer);
+        DataAvailable?.Invoke(AVSampleFormat.AV_SAMPLE_FMT_S16, 44100, 1, e.Buffer);
     }
 
     void OnStopped(object sender, StoppedEventArgs e)

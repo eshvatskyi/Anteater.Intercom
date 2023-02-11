@@ -1,5 +1,6 @@
 using AVFoundation;
 using FFmpeg.AutoGen.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace Anteater.Intercom.Services.Audio;
 
@@ -9,23 +10,11 @@ public partial class AudioRecord
 
     private partial void Init()
     {
-        Format = AVSampleFormat.AV_SAMPLE_FMT_FLTP;
-        SampleRate = 44100;
-        Channels = 1;
-
         var audioSession = AVAudioSession.SharedInstance();
 
-        switch (audioSession.RecordPermission)
+        if (audioSession.RecordPermission == AVAudioSessionRecordPermission.Undetermined)
         {
-            case AVAudioSessionRecordPermission.Denied:
-                return;
-
-            case AVAudioSessionRecordPermission.Undetermined:
-
-                audioSession.RequestRecordPermission((_) => { });
-
-                return;
-
+            audioSession.RequestRecordPermission((_) => { });
         };
     }
 
@@ -35,12 +24,18 @@ public partial class AudioRecord
 
         if (audioSession.RecordPermission != AVAudioSessionRecordPermission.Granted)
         {
+            Stopped?.Invoke();
             return;
         }
 
         _workerCancellation = new CancellationTokenSource();
 
-        _ = StartRecordingAsync(_workerCancellation.Token);
+        _ = StartRecordingAsync(_workerCancellation.Token).ContinueWith(x =>
+        {
+            _logger.LogError("Failed to start recording.", x.Exception);
+
+            Stopped?.Invoke();
+        }, TaskContinuationOptions.NotOnRanToCompletion);
     }
 
     public partial void Stop()
@@ -54,7 +49,7 @@ public partial class AudioRecord
 
         var inputFormat = engine.InputNode.GetBusOutputFormat(0);
 
-        var format = new AVAudioFormat(inputFormat.CommonFormat, SampleRate, (uint)Channels, false);
+        var format = new AVAudioFormat(inputFormat.CommonFormat, inputFormat.SampleRate, 1, false);
 
         var mixer = new AVAudioMixerNode { Volume = 0 };
 
@@ -66,9 +61,13 @@ public partial class AudioRecord
 
         engine.Prepare();
 
-        mixer.InstallTapOnBus(0, 512, format, OnDataAvailable);
+        mixer.InstallTapOnBus(0, 1024, format, OnDataAvailable);
 
-        engine.StartAndReturnError(out _);
+        if (!engine.StartAndReturnError(out _))
+        {
+            Stopped?.Invoke();
+            return;
+        }
 
         var tcs = new TaskCompletionSource();
 
@@ -81,15 +80,11 @@ public partial class AudioRecord
         engine.Stop();
     }
 
-    void OnDataAvailable(AVAudioPcmBuffer buffer, AVAudioTime when)
+    unsafe void OnDataAvailable(AVAudioPcmBuffer pcmBuffer, AVAudioTime when)
     {
-        unsafe
-        {
-            var audioBuffer = buffer.AudioBufferList[0];
+        var audioBuffer = pcmBuffer.AudioBufferList[0];
+        var data = new ReadOnlySpan<byte>((void*)audioBuffer.Data, audioBuffer.DataByteSize).ToArray();
 
-            var data = new Span<byte>((void*)audioBuffer.Data, audioBuffer.DataByteSize);
-
-            DataAvailable?.Invoke(data.ToArray());
-        }
+        DataAvailable?.Invoke(AVSampleFormat.AV_SAMPLE_FMT_FLTP, (int)pcmBuffer.Format.SampleRate, (int)pcmBuffer.Format.ChannelCount, data);
     }
 }

@@ -4,19 +4,13 @@ namespace Anteater.Intercom.Services.Audio;
 
 public interface IAudioRecord
 {
-    public delegate void DataAvailableEventHandler(byte[] data);
+    public delegate void DataAvailableEventHandler(AVSampleFormat format, int sampleRate, int channels, byte[] data);
 
     public delegate void StoppedEventHandler();
 
     event DataAvailableEventHandler DataAvailable;
 
     event StoppedEventHandler Stopped;
-
-    AVSampleFormat Format { get; }
-
-    int SampleRate { get; }
-
-    int Channels { get; }
 
     void Start();
 

@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Anteater.Intercom.Services.Events;
 using Anteater.Intercom.Services.Settings;
-using AVFoundation;
 using CommunityToolkit.Mvvm.Messaging;
 using Firebase.CloudMessaging;
 using Foundation;
@@ -62,12 +61,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
                     }
                 });
 
-                var audioSession = AVAudioSession.SharedInstance();
-
-                audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, AVAudioSessionCategoryOptions.DefaultToSpeaker);
-
-                audioSession.SetActive(true);
-
                 return true;
             }));
         });
@@ -76,9 +69,11 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
     }
 
     [Export("application:didRegisterForRemoteNotificationsWithDeviceToken:")]
-    public void RemoteNotificationsRegistrationCompleted(UIApplication application, NSData deviceToken)
+    public void RemoteNotificationsRegistrationCompleted(UIApplication application, NSData apnsToken)
     {
         _logger.LogDebug($"Remote notifications registration completed.");
+
+        Messaging.SharedInstance.SetApnsToken(apnsToken, ApnsTokenType.Unknown);
     }
 
     [Export("application:didFailToRegisterForRemoteNotificationsWithError:")]
@@ -91,8 +86,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
     public void RemoteNotificationsRegistrationTokenReceived(Messaging messaging, string apnsToken)
     {
         _logger.LogDebug($"Remote notifications token received: {apnsToken}.");
-
-        messaging.SetApnsToken(apnsToken, ApnsTokenType.Unknown);
 
         if (!string.IsNullOrWhiteSpace(_settings?.DeviceId))
         {

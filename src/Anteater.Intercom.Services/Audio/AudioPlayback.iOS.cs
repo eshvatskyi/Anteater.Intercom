@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using AVFoundation;
 
 namespace Anteater.Intercom.Services.Audio;
@@ -44,21 +43,31 @@ public partial class AudioPlayback
     {
         _isRunning = true;
 
+        var audioSession = AVAudioSession.SharedInstance();
+
+        var audioSessionOpts = AVAudioSessionCategoryOptions.DefaultToSpeaker
+            | AVAudioSessionCategoryOptions.OverrideMutedMicrophoneInterruption
+            | AVAudioSessionCategoryOptions.AllowBluetooth
+            | AVAudioSessionCategoryOptions.AllowBluetoothA2DP;
+
+        audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, audioSessionOpts);
+        audioSession.SetMode((NSString)"videoChat", out _);
+        audioSession.SetActive(true);
+
         var engine = new AVAudioEngine();
 
-        var player = new AVAudioPlayerNode();
+        engine.OutputNode.SetVoiceProcessingEnabled(true, out _);
 
-        player.Volume = 1;
+        var player = new AVAudioPlayerNode { Volume = 1 };
 
         engine.AttachNode(player);
-
-        var pcmBuffer = new AVAudioPcmBuffer(_format, (uint)_samplesBuffer.Length / 4);
-
         engine.Connect(player, engine.MainMixerNode, _format);
         engine.Prepare();
         engine.StartAndReturnError(out _);
 
         player.Play();
+
+        var pcmBuffer = new AVAudioPcmBuffer(_format, (uint)_samplesBuffer.Length / 4);
 
         ReadSamples(pcmBuffer, player);
 
@@ -71,6 +80,8 @@ public partial class AudioPlayback
         player.Stop();
 
         engine.Stop();
+
+        audioSession.SetActive(false);
 
         _isRunning = false;
     }
@@ -93,7 +104,7 @@ public partial class AudioPlayback
         {
             var channels = (nint*)pcmBuffer.FloatChannelData.ToPointer();
 
-            Marshal.Copy(_samplesBuffer, 0, channels[0], _samplesBuffer.Length);
+            _samplesBuffer.AsSpan().CopyTo(new Span<byte>((void*)channels[0], _samplesBuffer.Length));
 
             pcmBuffer.FrameLength = pcmBuffer.FrameCapacity;
         }

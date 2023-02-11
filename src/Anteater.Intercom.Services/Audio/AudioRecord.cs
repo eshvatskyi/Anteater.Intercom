@@ -1,23 +1,21 @@
-using FFmpeg.AutoGen.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace Anteater.Intercom.Services.Audio;
 
 public partial class AudioRecord : IAudioRecord
 {
-    public AudioRecord()
+    private readonly ILogger<AudioRecord> _logger;
+
+    public AudioRecord(ILoggerFactory logger)
     {
+        _logger = logger.CreateLogger<AudioRecord>();
+
         Init();
     }
 
     public event IAudioRecord.DataAvailableEventHandler DataAvailable;
 
     public event IAudioRecord.StoppedEventHandler Stopped;
-
-    public AVSampleFormat Format { get; private set; }
-
-    public int SampleRate { get; private set; }
-
-    public int Channels { get; private set; }
 
     private partial void Init();
 

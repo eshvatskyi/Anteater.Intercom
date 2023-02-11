@@ -6,9 +6,9 @@ public interface IReversAudioService
 {
     bool IsOpen { get; }
 
-    Task ConnectAsync(AVSampleFormat format, int sampleRate, int channels);
+    Task ConnectAsync();
 
-    Task SendAsync(byte[] data);
+    Task SendAsync(AVSampleFormat format, int sampleRate, int channels, byte[] data);
 
     void Disconnect();
 }
