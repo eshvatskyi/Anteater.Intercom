@@ -64,7 +64,7 @@ public class RemoteNotificationsService : BackgroundService, IRecipient<AlarmEve
 
         if (message.Type == AlarmEvent.EventType.MotionDetection)
         {
-            if (TimeSpan.FromTicks(DateTime.UtcNow.Ticks - _motionAlertTimestamp).TotalSeconds > 3)
+            if (TimeSpan.FromTicks(DateTime.UtcNow.Ticks - _motionAlertTimestamp).TotalSeconds > 5)
             {
                 _motionAlertTimestamp = 0;
                 _motionAlertsCount = 0;
