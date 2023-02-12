@@ -291,13 +291,13 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
             _duplexModeTimerCancellation?.Cancel();
             _duplexModeTimerCancellation = new CancellationTokenSource();
 
-            var timeout = TimeSpan.FromSeconds(10) - TimeSpan.FromTicks(DateTime.UtcNow.Ticks - message.Timestamp);
+            var timeout = TimeSpan.FromSeconds(15) - TimeSpan.FromTicks(DateTime.UtcNow.Ticks - message.Timestamp);
 
             _logger.LogDebug($"AlarmEvent.Received: With timeout, {timeout.TotalSeconds} secs");
 
             if (timeout.TotalSeconds > 0)
             {
-                Task.Delay(TimeSpan.FromSeconds(10), _duplexModeTimerCancellation.Token).ContinueWith(x =>
+                Task.Delay(timeout, _duplexModeTimerCancellation.Token).ContinueWith(x =>
                 {
                     _isDuplexMode = true;
                     Disconnect();

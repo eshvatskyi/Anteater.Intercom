@@ -15,8 +15,8 @@
     <ApplicationTitle>Anteater Intercom</ApplicationTitle>
     <ApplicationId>com.anteater.intercom</ApplicationId>
     <ApplicationIdGuid>fea64eb9-8675-4338-8773-1b2d5b06192a</ApplicationIdGuid>
-    <ApplicationDisplayVersion>1.0.9</ApplicationDisplayVersion>
-    <ApplicationVersion>9</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.10</ApplicationDisplayVersion>
+    <ApplicationVersion>10</ApplicationVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) == true">
@@ -57,6 +57,7 @@
     <PackageReference Include="Clowd.Squirrel" Version="2.9.42" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="CommunityToolkit.Maui" Version="4.0.0" />
     <PackageReference Include="CommunityToolkit.Maui.Markup" Version="3.0.0" />
+    <PackageReference Include="Cronos" Version="0.7.1" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.StaticallyLinked" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-ios')) == true" />
     <PackageReference Include="FFmpeg.AutoGen.Bindings.DynamicallyLoaded" Version="5.1.1.1" Condition="$(TargetFramework.Contains('-windows')) == true" />
     <PackageReference Include="FirebaseAdmin" Version="2.3.0" Condition="$(TargetFramework.Contains('-windows')) == true" />

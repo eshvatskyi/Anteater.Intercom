@@ -5,6 +5,7 @@ using Google.Apis.Auth.OAuth2;
 using Microsoft.Maui.LifecycleEvents;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
+using Squirrel;
 
 namespace Anteater.Intercom.WinUI;
 
@@ -15,6 +16,15 @@ public partial class App : MauiWinUIApplication
         DynamicallyLoadedBindings.Initialize();
 
         InitializeComponent();
+
+        UnhandledException += (_, _) =>
+        {
+            try
+            {
+                UpdateManager.RestartApp();
+            }
+            catch { }
+        };
     }
 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp(ConfigurePlatformServices);

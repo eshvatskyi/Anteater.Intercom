@@ -1,3 +1,4 @@
+using Cronos;
 using Microsoft.Extensions.Hosting;
 using Squirrel;
 
@@ -5,34 +6,47 @@ namespace Anteater.Intercom;
 
 public class UpdaterService : BackgroundService
 {
-    static readonly TimeSpan CheckDelay = TimeSpan.FromMinutes(5);
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
-        {
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                await Task.Delay(CheckDelay, stoppingToken);
+        await Task.WhenAll(
+            StartUpdaterTimerAsync(stoppingToken),
+            StartRestartTimerAsync(stoppingToken)
+        );
+    }
 
+    async Task StartUpdaterTimerAsync(CancellationToken stoppingToken)
+    {
+        var timer = new CronosPeriodicTimer("*/5 * * * *");
+
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            try
+            {
                 using var mgr = new UpdateManager("\\\\10.0.1.100\\Shared\\AnteaterIntercom");
 
                 if (mgr.IsInstalledApp)
                 {
-                    try
+                    if (await mgr.UpdateApp() != null)
                     {
-                        if (mgr.UpdateApp().GetAwaiter().GetResult() != null)
-                        {
-                            UpdateManager.RestartApp();
-                        }
+                        UpdateManager.RestartApp();
                     }
-                    catch { }
                 }
             }
+            catch { }
         }
-        catch (OperationCanceledException)
+    }
+
+    async Task StartRestartTimerAsync(CancellationToken stoppingToken)
+    {
+        var timer = new CronosPeriodicTimer("0 6,18 * * *");
+
+        while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            return;
+            try
+            {
+                UpdateManager.RestartApp();
+            }
+            catch { }
         }
     }
 }
