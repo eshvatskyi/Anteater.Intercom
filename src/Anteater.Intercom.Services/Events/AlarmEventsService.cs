@@ -2,9 +2,11 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Anteater.Intercom.Services.Events;
 
@@ -17,16 +19,19 @@ public class AlarmEventsService : BackgroundService
 
     private readonly IMessenger _messenger;
     private readonly ISettingsService _settings;
+    private readonly ILogger<AlarmEventsService> _logger;
     private readonly HttpClient _client;
 
     private CancellationTokenSource _cts;
 
-    public AlarmEventsService(IMessenger messenger, ISettingsService settings)
+    public AlarmEventsService(IMessenger messenger, ISettingsService settings, ILoggerFactory logger)
     {
         _messenger = messenger;
 
         _settings = settings;
         _settings.Changed += (_, _) => _cts?.Cancel();
+
+        _logger = logger.CreateLogger<AlarmEventsService>();
 
         _client = new HttpClient()
         {
@@ -121,6 +126,8 @@ public class AlarmEventsService : BackgroundService
         {
             if (AlarmEvent.TryParse(Encoding.ASCII.GetString(line), out var alarmEvent))
             {
+                _logger.LogDebug($"AlarmEvent received: {JsonSerializer.Serialize(alarmEvent)}");
+
                 _messenger.Send(alarmEvent);
             }
         }

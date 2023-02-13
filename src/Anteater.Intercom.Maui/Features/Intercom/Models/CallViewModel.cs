@@ -33,76 +33,49 @@ public partial class CallViewModel : ObservableViewModelBase
 
     void StartCommand()
     {
-        _ = Task.Run(async () =>
+        if (IsStarted = !IsStarted)
         {
-            if (IsStarted = !IsStarted)
-            {
-                _callStopTokenSource = new CancellationTokenSource();
+            _callStopTokenSource = new CancellationTokenSource();
 
-                try
-                {
-                    await StartCallAsync();
-                }
-                catch { }
-            }
-            else
-            {
-                _callStopTokenSource?.Cancel();
-            }
-        });
+            _ = StartCallAsync();
+        }
+        else
+        {
+            _callStopTokenSource?.Cancel();
+        }
     }
 
     async Task StartCallAsync()
     {
-        var disconnect = _reversAudio.IsOpen == false;
-
-        if (!_reversAudio.IsOpen)
+        try
         {
-            try
-            {
-                await _reversAudio.ConnectAsync();
-            }
-            catch
-            {
-                IsStarted = false;
+            await _reversAudio.ConnectAsync();
 
-                return;
-            }
+            _recorder.Start();
+            _recorder.DataAvailable += OnRecordingDataAvailable;
+            _recorder.Stopped += OnRecordingStopped;
         }
+        catch
+        {
+            IsStarted = false;
+
+            return;
+        }
+
+        var tcs = new TaskCompletionSource();
 
         _callStopTokenSource.Token.Register(() =>
         {
             IsStarted = false;
 
-            if (disconnect)
-            {
-                _reversAudio.Disconnect();
-            }
+            _reversAudio.Disconnect();
 
             _recorder.DataAvailable -= OnRecordingDataAvailable;
-
             _recorder.Stopped -= OnRecordingStopped;
-
             _recorder.Stop();
+
+            tcs.TrySetResult();
         });
-
-
-        var tcs = new TaskCompletionSource();
-
-        _callStopTokenSource.Token.Register(() => tcs.TrySetResult());
-
-        _recorder.DataAvailable += OnRecordingDataAvailable;
-
-        _recorder.Stopped += OnRecordingStopped;
-
-        try
-        {
-            _recorder.Start();
-        }
-        catch
-        {
-            _callStopTokenSource.Cancel();
-        }
 
         await tcs.Task;
     }
@@ -121,6 +94,6 @@ public partial class CallViewModel : ObservableViewModelBase
 
     void OnRecordingStopped()
     {
-        _callStopTokenSource.Cancel();
+        _callStopTokenSource?.Cancel();
     }
 }

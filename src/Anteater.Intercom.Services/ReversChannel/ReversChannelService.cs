@@ -1,10 +1,6 @@
-using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
 using Anteater.Intercom.Services.Events;
-using Anteater.Intercom.Services.ReversChannel.Headers;
 using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
 using FFmpeg.AutoGen.Abstractions;
@@ -21,16 +17,9 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
     private readonly ISettingsService _settings;
     private readonly ILogger _logger;
 
-    private TcpClient _client;
-    private NetworkStream _stream;
-    private BinaryWriter _writer;
-    private AudioPacketFactory _audioPacketFactory;
-    private QueuedBuffer _buffer;
-    private TalkInfoHeader _infoHeader;
-    private AudioEncoder _encoder;
+    private ReversChannelClient _client;
 
-    private bool _isDuplexMode = true;
-    private CancellationTokenSource _duplexModeTimerCancellation;
+    private bool _keepConnectionForUnlock = false;
 
     public ReversChannelService(IMessenger messenger, ISettingsService settings, ILoggerFactory logger)
     {
@@ -51,73 +40,92 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
         await tcs.Task;
     }
 
-    public bool IsOpen { get; private set; }
-
-    public async Task ConnectAsync()
+    async Task OpenAsync(bool threadSafe)
     {
         try
         {
-            _infoHeader = await OpenAsync();
+            if (!threadSafe)
+            {
+                await _semaphore.WaitAsync();
+            }
+
+            _client = new ReversChannelClient(_settings.Current);
+
+            await _client.OpenAsync();
         }
         catch
         {
-            Disconnect();
+            Disconnect(true);
+
             throw;
+        }
+        finally
+        {
+            if (!threadSafe)
+            {
+                _semaphore.Release();
+            }
         }
     }
 
-    async Task<TalkInfoHeader> OpenAsync()
+    void Disconnect(bool threadSafe)
+    {
+        try
+        {
+            if (!threadSafe)
+            {
+                _semaphore.Wait();
+            }
+
+            _keepConnectionForUnlock = false;
+
+            _client?.Disconnect();
+            _client = null;
+        }
+        finally
+        {
+            if (!threadSafe)
+            {
+                _semaphore.Release();
+            }
+        }
+    }
+
+    async ValueTask IReversAudioService.ConnectAsync()
     {
         try
         {
             await _semaphore.WaitAsync();
 
-            _client = new TcpClient();
-            _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-
-            if (!IPAddress.TryParse(_settings.Current.Host, out var address))
+            if (_client is null)
             {
-                address = Dns.GetHostEntry(_settings.Current.Host).AddressList.FirstOrDefault();
+                _keepConnectionForUnlock = false;
+
+                await OpenAsync(true);
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    async Task IReversAudioService.SendAsync(AVSampleFormat format, int sampleRate, int channels, byte[] data)
+    {
+        try
+        {
+            await _semaphore.WaitAsync();
+
+            if (_client is null)
+            {
+                return;
             }
 
-            await _client.ConnectAsync(address, _settings.Current.DataPort);
-
-            _stream = _client.GetStream();
-            _writer = new BinaryWriter(_stream);
-
-            new AcceptHeader
-            {
-                Username = _settings.Current.Username,
-                Password = _settings.Current.Password,
-                Flag = 17767,
-                SocketType = 2,
-                Misc = 0
-            }.Write(_writer);
-
-            await _stream.FlushAsync();
-
-            var commHeader = await CommHeader.ReadAsync(_stream);
-
-            switch (commHeader.ErrorCode)
-            {
-                case 10:
-                case 8:
-                    throw new InvalidOperationException("Failed to open audio backchannel.");
-            }
-
-            IsOpen = true;
-
-            var infoHeader = await TalkInfoHeader.ReadAsync(_stream);
-
-            _audioPacketFactory = new AudioPacketFactory(infoHeader, _writer);
-
-            _buffer = new QueuedBuffer(_audioPacketFactory.BufferSize * 3);
-
-            return infoHeader;
+            await _client.SendAsync(format, sampleRate, channels, data);
         }
         catch
         {
-            Disconnect();
+            Disconnect(true);
             throw;
         }
         finally
@@ -126,81 +134,28 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
         }
     }
 
-    static AudioEncoder GetEncoder(TalkInfoHeader info, AVSampleFormat format, int sampleRate, int channels)
+    void IReversAudioService.Disconnect()
     {
-        var codecId = info.AudioEncodeType switch
-        {
-            7 => AVCodecID.AV_CODEC_ID_PCM_MULAW,
-            3 => AVCodecID.AV_CODEC_ID_PCM_ALAW,
-            1 => AVCodecID.AV_CODEC_ID_ADPCM_G726,
-            _ => throw new InvalidOperationException("Unknown encoding type."),
-        };
-
-        return new AudioEncoder(codecId, info.AudioSamples, info.AudioChannels, format, sampleRate, channels);
+        Disconnect(false);
     }
 
-    public async Task SendAsync(AVSampleFormat format, int sampleRate, int channels, byte[] data)
+    async Task<(bool Status, string Message)> IDoorLockService.UnlockDoorAsync()
     {
-        if (!IsOpen)
-        {
-            return;
-        }
-
         try
         {
             await _semaphore.WaitAsync();
 
-            if (IsOpen)
+            if (_client is not null && !_keepConnectionForUnlock)
             {
-                if (_encoder is null)
-                {
-                    _encoder = GetEncoder(_infoHeader, format, sampleRate, channels);
-                }
-
-                await Task.Run(async () =>
-                {
-                    var encodedData = _encoder.Encode(data);
-
-                    SendEncodedData(encodedData);
-
-                    await _stream.FlushAsync();
-                });
+                Disconnect(true);
             }
-
-            _semaphore.Release();
         }
-        catch
+        finally
         {
             _semaphore.Release();
-            Disconnect();
-            throw;
-        }
-    }
-
-    void SendEncodedData(byte[] data)
-    {
-        _buffer.Write(data, 0, data.Length);
-
-        Span<byte> frameData = stackalloc byte[_audioPacketFactory.BufferSize];
-
-        while (_buffer.Length >= _audioPacketFactory.BufferSize)
-        {
-            _buffer.Read(frameData, 0, _audioPacketFactory.BufferSize);
-
-            _audioPacketFactory.Write(frameData);
-        }
-    }
-
-    public async Task<(bool Status, string Message)> UnlockDoorAsync()
-    {
-        var isDuplexMode = IsOpen && _isDuplexMode;
-
-        if (isDuplexMode)
-        {
-            Disconnect();
         }
 
-        var (status, message) = await SendUnlockDoorAsync();
+        var (status, message) = await SendUnlockDoorAsync(_settings.Current);
 
         if (!status)
         {
@@ -225,28 +180,37 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
 
         await tcs.Task;
 
-        if (isDuplexMode)
+        try
         {
-            _ = OpenAsync();
+            await _semaphore.WaitAsync();
+
+            if (!_keepConnectionForUnlock)
+            {
+                await OpenAsync(true);
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
         }
 
         return (true, "");
     }
 
-    async Task<(bool Status, string Message)> SendUnlockDoorAsync()
+    static async Task<(bool Status, string Message)> SendUnlockDoorAsync(ConnectionSettings settings)
     {
         var uriBuilder = new UriBuilder
         {
             Scheme = "http",
-            Host = _settings.Current.Host,
-            Port = _settings.Current.WebPort,
+            Host = settings.Host,
+            Port = settings.WebPort,
             Path = "cgi-bin/alarmout_cgi",
             Query = $"action=set&Output=0&Status=1",
         };
 
         using var client = new HttpClient();
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Current.Username}:{_settings.Current.Password}")));
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{settings.Username}:{settings.Password}")));
 
         var response = await client.GetAsync(uriBuilder.Uri);
         var content = response.Content != null ? await response.Content.ReadAsStringAsync() : "";
@@ -254,56 +218,22 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
         return (response.IsSuccessStatusCode, content);
     }
 
-    public void Disconnect()
-    {
-        try
-        {
-            _semaphore.Wait();
-
-            IsOpen = false;
-
-            _client?.Dispose();
-            _writer?.Dispose();
-            _audioPacketFactory?.Dispose();
-
-            _client = null;
-            _writer = null;
-            _audioPacketFactory = null;
-            _encoder = null;
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
-    }
-
     void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
     {
-        _logger.LogDebug($"AlarmEvent.Received: {JsonSerializer.Serialize(message)}");
-
         if (message.Status && message.Type == AlarmEvent.EventType.SensorAlarm && message.Numbers is [1, ..])
         {
-            _isDuplexMode = false;
-
-            _duplexModeTimerCancellation?.Cancel();
-            _duplexModeTimerCancellation = new CancellationTokenSource();
-
-            var timeout = TimeSpan.FromSeconds(15) - TimeSpan.FromTicks(DateTime.UtcNow.Ticks - message.Timestamp);
+            var timeout = TimeSpan.FromSeconds(30) - TimeSpan.FromTicks(DateTime.UtcNow.Ticks - message.Timestamp);
 
             _logger.LogDebug($"AlarmEvent.Received: With timeout, {timeout.TotalSeconds} secs");
 
             if (timeout.TotalSeconds > 0)
             {
-                Task.Delay(timeout, _duplexModeTimerCancellation.Token).ContinueWith(x =>
+                _keepConnectionForUnlock = true;
+
+                if (_client is null)
                 {
-                    _isDuplexMode = true;
-                    Disconnect();
-                }, TaskContinuationOptions.OnlyOnRanToCompletion);
-            }
-            else
-            {
-                _isDuplexMode = true;
-                Disconnect();
+                    _ = OpenAsync(false);
+                }
             }
         }
     }
