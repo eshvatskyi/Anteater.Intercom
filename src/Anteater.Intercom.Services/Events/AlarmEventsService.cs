@@ -5,7 +5,6 @@ using System.Text;
 using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom.Services.Events;
 
@@ -17,27 +16,22 @@ public class AlarmEventsService : BackgroundService
     static readonly TimeSpan ContinueDelay = TimeSpan.FromSeconds(5);
 
     private readonly IMessenger _messenger;
+    private readonly ISettingsService _settings;
     private readonly HttpClient _client;
 
-    private ConnectionSettings _settings;
     private CancellationTokenSource _cts;
 
-    public AlarmEventsService(IMessenger messenger, IOptionsMonitor<ConnectionSettings> connectionSettings)
+    public AlarmEventsService(IMessenger messenger, ISettingsService settings)
     {
         _messenger = messenger;
+
+        _settings = settings;
+        _settings.Changed += (_, _) => _cts?.Cancel();
 
         _client = new HttpClient()
         {
             Timeout = ConnectionTimeout
         };
-
-        _settings = connectionSettings.CurrentValue;
-
-        connectionSettings.OnChange(settings =>
-        {
-            _settings = settings;
-            _cts?.Cancel();
-        });
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -55,15 +49,15 @@ public class AlarmEventsService : BackgroundService
                     var uriBuilder = new UriBuilder
                     {
                         Scheme = "http",
-                        Host = _settings.Host,
-                        Port = _settings.WebPort,
+                        Host = _settings.Current.Host,
+                        Port = _settings.Current.WebPort,
                         Path = "cgi-bin/alarmchangestate_cgi",
                         Query = $"parameter=MotionDetection;SensorAlarm;SensorOutAlarm",
                     };
 
                     using var request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.Uri);
 
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Username}:{_settings.Password}")));
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Current.Username}:{_settings.Current.Password}")));
 
                     using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stoppingToken);
 

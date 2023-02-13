@@ -2,7 +2,6 @@ using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Rtsp;
 using Anteater.Intercom.Services.Settings;
-using Microsoft.Extensions.Options;
 using SkiaSharp;
 using SkiaSharp.Views.Maui.Controls;
 
@@ -12,8 +11,7 @@ public partial class PlayerViewModel : ObservableViewModelBase
 {
     private RtspStreamContext _rtspStream;
     private readonly IAudioPlayback _playback;
-
-    private ConnectionSettings _settings;
+    private readonly ISettingsService _settings;
 
     private CancellationTokenSource _reconnectCancellation;
     private Task _mainThreadImageSourceTask = Task.CompletedTask;
@@ -25,13 +23,10 @@ public partial class PlayerViewModel : ObservableViewModelBase
     private bool _isSoundMuted;
     private int _reconnectAttempt = 0;
 
-    public PlayerViewModel(IAudioPlayback playback, IOptionsMonitor<ConnectionSettings> connectionSettings)
+    public PlayerViewModel(IAudioPlayback playback, ISettingsService settings)
     {
         _playback = playback;
-
-        _settings = connectionSettings.CurrentValue;
-
-        connectionSettings.OnChange(settings => _settings = settings);
+        _settings = settings;
     }
 
     public int ImageWidth
@@ -61,10 +56,10 @@ public partial class PlayerViewModel : ObservableViewModelBase
         var uriBuilder = new UriBuilder
         {
             Scheme = "rtsp",
-            Host = _settings.Host,
-            Port = _settings.RtspPort,
-            UserName = _settings.Username,
-            Password = _settings.Password,
+            Host = _settings.Current.Host,
+            Port = _settings.Current.RtspPort,
+            UserName = _settings.Current.Username,
+            Password = _settings.Current.Password,
             Path = "av0_0",
         };
 

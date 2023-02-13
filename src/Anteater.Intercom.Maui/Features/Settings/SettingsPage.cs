@@ -2,20 +2,20 @@ using System.Net.Http.Headers;
 using System.Text;
 using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Settings;
-using Anteater.Intercom.Settings;
 using CommunityToolkit.Maui.Markup;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Maui.Layouts;
 
 namespace Anteater.Intercom.Features.Settings;
 
 public class SettingsPage : ContentPageBase
 {
-    private readonly IConfiguration _configuration;
+    private readonly ISettingsService _settings;
+    private readonly ISettingsProvider _settingsProvider;
 
-    public SettingsPage(IConfiguration configuration)
+    public SettingsPage(ISettingsService settings, ISettingsProvider settingsProvider)
     {
-        _configuration = configuration;
+        _settings = settings;
+        _settingsProvider = settingsProvider;
 
         NavigationPage.SetHasNavigationBar(this, false);
 
@@ -62,18 +62,15 @@ public class SettingsPage : ContentPageBase
 
                 new SettingEntry { Keyboard = Keyboard.Numeric, ReturnType = ReturnType.Next, }
                     .Placeholder("WebPort")
-                    .Key("WebPort")
-                    .Default("80"),
+                    .Key("WebPort"),
 
                 new SettingEntry { Keyboard = Keyboard.Numeric, ReturnType = ReturnType.Next, }
                     .Placeholder("RtspPort")
-                    .Key("RtspPort")
-                    .Default("554"),
+                    .Key("RtspPort"),
 
                 new SettingEntry { Keyboard = Keyboard.Numeric, ReturnType = ReturnType.Next, }
                     .Placeholder("DataPort")
-                    .Key("DataPort")
-                    .Default("5000"),
+                    .Key("DataPort"),
             }
             .Spacing(10)
             .Padding(20, 10)
@@ -98,36 +95,35 @@ public class SettingsPage : ContentPageBase
     {
         await TryGetDevideInformationAsync();
 
-        (_configuration as IConfigurationRoot).Providers
-            .OfType<SettingsConfigurationProvider>()
-            .First()
-            .Load();
+        _settings.Refresh();
 
         await Navigation.PopToRootAsync();
     }
 
-    static async Task TryGetDevideInformationAsync()
+    async ValueTask TryGetDevideInformationAsync()
     {
+        var settings = _settingsProvider.Get();
+        if (settings == _settings.Current)
+        {
+            return;
+        }
+
         var deviceId = "";
 
         try
         {
-            var host = Preferences.Default.Get(nameof(ConnectionSettings.Host), "");
-            var username = Preferences.Default.Get(nameof(ConnectionSettings.Username), "");
-            var password = Preferences.Default.Get(nameof(ConnectionSettings.Password), "");
-            var webPort = Preferences.Default.Get(nameof(ConnectionSettings.WebPort), 80);
 
             var uriBuilder = new UriBuilder
             {
                 Scheme = "http",
-                Host = host,
-                Port = webPort,
+                Host = settings.Host,
+                Port = settings.WebPort,
                 Path = "cgi-bin/systeminfo_cgi",
             };
 
             using var client = new HttpClient();
 
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}")));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{settings.Username}:{settings.Password}")));
 
             var response = await client.GetAsync(uriBuilder.Uri);
 
@@ -144,6 +140,6 @@ public class SettingsPage : ContentPageBase
         }
         catch { };
 
-        Preferences.Default.Set(nameof(ConnectionSettings.DeviceId), deviceId);
+        _settingsProvider.Set(nameof(ConnectionSettings.DeviceId), deviceId);
     }
 }

@@ -10,7 +10,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using FFmpeg.AutoGen.Abstractions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom.Services.ReversChannel;
 
@@ -19,7 +18,7 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     private readonly IMessenger _messenger;
-    private ConnectionSettings _settings;
+    private readonly ISettingsService _settings;
     private readonly ILogger _logger;
 
     private TcpClient _client;
@@ -33,14 +32,12 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
     private bool _isDuplexMode = true;
     private CancellationTokenSource _duplexModeTimerCancellation;
 
-    public ReversChannelService(IMessenger messenger, IOptionsMonitor<ConnectionSettings> connectionSettings, ILoggerFactory logger)
+    public ReversChannelService(IMessenger messenger, ISettingsService settings, ILoggerFactory logger)
     {
         _messenger = messenger;
         _messenger.Register(this);
 
-        _settings = connectionSettings.CurrentValue;
-
-        connectionSettings.OnChange(settings => _settings = settings);
+        _settings = settings;
 
         _logger = logger.CreateLogger<ReversChannelService>();
     }
@@ -78,20 +75,20 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
             _client = new TcpClient();
             _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-            if (!IPAddress.TryParse(_settings.Host, out var address))
+            if (!IPAddress.TryParse(_settings.Current.Host, out var address))
             {
-                address = Dns.GetHostEntry(_settings.Host).AddressList.FirstOrDefault();
+                address = Dns.GetHostEntry(_settings.Current.Host).AddressList.FirstOrDefault();
             }
 
-            await _client.ConnectAsync(address, _settings.DataPort);
+            await _client.ConnectAsync(address, _settings.Current.DataPort);
 
             _stream = _client.GetStream();
             _writer = new BinaryWriter(_stream);
 
             new AcceptHeader
             {
-                Username = _settings.Username,
-                Password = _settings.Password,
+                Username = _settings.Current.Username,
+                Password = _settings.Current.Password,
                 Flag = 17767,
                 SocketType = 2,
                 Misc = 0
@@ -241,15 +238,15 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
         var uriBuilder = new UriBuilder
         {
             Scheme = "http",
-            Host = _settings.Host,
-            Port = _settings.WebPort,
+            Host = _settings.Current.Host,
+            Port = _settings.Current.WebPort,
             Path = "cgi-bin/alarmout_cgi",
             Query = $"action=set&Output=0&Status=1",
         };
 
         using var client = new HttpClient();
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Username}:{_settings.Password}")));
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.Current.Username}:{_settings.Current.Password}")));
 
         var response = await client.GetAsync(uriBuilder.Uri);
         var content = response.Content != null ? await response.Content.ReadAsStringAsync() : "";
