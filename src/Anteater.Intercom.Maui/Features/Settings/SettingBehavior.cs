@@ -1,3 +1,5 @@
+using Anteater.Intercom.Services.Settings;
+
 namespace Anteater.Intercom.Features.Settings;
 
 public class SettingBehavior
@@ -27,19 +29,19 @@ public class SettingBehavior
             return;
         }
 
+        var settings = App.Services.GetRequiredService<ISettingsProvider>();
+
         if (newValue is bool attachBehavior && attachBehavior)
         {
             entry.Unfocused += SettingChanged;
 
             if (Keyboard.Numeric.Equals(entry.Keyboard))
             {
-                var defaultValue = int.TryParse(entry.Default, out var value) ? value : 0;
-
-                entry.Text = Preferences.Default.Get(entry.Key, defaultValue).ToString();
+                entry.Text = settings.Get<int>(entry.Key).ToString();
             }
             else
             {
-                entry.Text = Preferences.Default.Get(entry.Key, entry.Default);
+                entry.Text = settings.Get<string>(entry.Key);
             }
         }
         else
@@ -55,17 +57,19 @@ public class SettingBehavior
             return;
         }
 
+        var settings = App.Services.GetRequiredService<ISettingsProvider>();
+
         if (Keyboard.Numeric.Equals(entry.Keyboard))
         {
-            var defaultValue = int.TryParse(entry.Default, out var value) ? value : 0;
+            settings.Set(entry.Key, int.TryParse(entry.Text?.Trim(), out var value) ? value : default);
 
-            var currentValue = int.TryParse(entry.Text?.Trim(), out value) ? value : defaultValue;
-
-            Preferences.Default.Set(entry.Key, currentValue);
+            entry.Text = settings.Get<int>(entry.Key).ToString();
         }
         else
         {
-            Preferences.Default.Set(entry.Key, entry.Text?.Trim() ?? "");
+            settings.Set(entry.Key, entry.Text?.Trim() ?? "");
+
+            entry.Text = settings.Get<string>(entry.Key);
         }
     }
 }

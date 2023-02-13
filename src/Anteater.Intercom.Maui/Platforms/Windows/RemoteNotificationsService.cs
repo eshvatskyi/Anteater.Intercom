@@ -4,27 +4,22 @@ using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
 using FirebaseAdmin.Messaging;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace Anteater.Intercom;
 
 public class RemoteNotificationsService : BackgroundService, IRecipient<AlarmEvent>
 {
     private readonly FirebaseMessaging _firebaseMessaging;
-
-    private ConnectionSettings _settings;
+    private readonly ISettingsService _settings;
 
     private int _motionAlertsCount;
     private long _motionAlertTimestamp;
     private DateTime _motionAlertSent = DateTime.UtcNow;
 
-    public RemoteNotificationsService(FirebaseMessaging firebaseMessaging, IOptionsMonitor<ConnectionSettings> settings, IMessenger messenger)
+    public RemoteNotificationsService(FirebaseMessaging firebaseMessaging, ISettingsService settings, IMessenger messenger)
     {
         _firebaseMessaging = firebaseMessaging;
-
-        _settings = settings.CurrentValue;
-
-        settings.OnChange(settings => _settings = settings);
+        _settings = settings;
 
         messenger.RegisterAll(this);
     }
@@ -40,7 +35,7 @@ public class RemoteNotificationsService : BackgroundService, IRecipient<AlarmEve
 
     void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
     {
-        if (!message.Status || string.IsNullOrWhiteSpace(_settings.DeviceId))
+        if (!message.Status || string.IsNullOrWhiteSpace(_settings.Current.DeviceId))
         {
             return;
         }
@@ -52,7 +47,7 @@ public class RemoteNotificationsService : BackgroundService, IRecipient<AlarmEve
 
             _firebaseMessaging.SendAsync(new()
             {
-                Topic = $"{_settings.DeviceId}.call",
+                Topic = $"{_settings.Current.DeviceId}.call",
                 Notification = new() { Title = "Incoming call", Body = "You received an inner door call" },
                 Data = new Dictionary<string, string>
                 {
@@ -79,7 +74,7 @@ public class RemoteNotificationsService : BackgroundService, IRecipient<AlarmEve
                 {
                     _firebaseMessaging.SendAsync(new()
                     {
-                        Topic = $"{_settings.DeviceId}.motion",
+                        Topic = $"{_settings.Current.DeviceId}.motion",
                         Notification = new() { Title = "Motion detected" },
                         Apns = new() { Aps = new() { Sound = "default" } },
                     });

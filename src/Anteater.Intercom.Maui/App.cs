@@ -17,8 +17,12 @@ public class App : Application
     private readonly IEnumerable<IHostedService> _hostedServices;
     private readonly CancellationTokenSource _stoppingTokenSource = new();
 
-    public App(IMessenger messenger, IEnumerable<IHostedService> hostedServices, IntercomPage intercomPage)
+    public static IServiceProvider Services { get; private set; }
+
+    public App(IServiceProvider services, IMessenger messenger, IEnumerable<IHostedService> hostedServices, IntercomPage intercomPage)
     {
+        Services = services;
+
         _messenger = messenger;
         _hostedServices = hostedServices;
 

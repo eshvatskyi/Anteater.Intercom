@@ -5,7 +5,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using Firebase.CloudMessaging;
 using Foundation;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.Maui.LifecycleEvents;
 using UIKit;
 using UserNotifications;
@@ -16,7 +15,7 @@ namespace Anteater.Intercom;
 public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterDelegate, IMessagingDelegate
 {
     private IMessenger _messenger;
-    private ConnectionSettings _settings;
+    private ISettingsService _settings;
     private ILogger<AppDelegate> _logger;
 
     protected override MauiApp CreateMauiApp()
@@ -25,11 +24,8 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
 
         _messenger = app.Services.GetRequiredService<IMessenger>();
 
-        var settingsMonitor = app.Services.GetRequiredService<IOptionsMonitor<ConnectionSettings>>();
-
-        _settings = settingsMonitor.CurrentValue;
-
-        settingsMonitor.OnChange(OnSettingsChanged);
+        _settings = app.Services.GetRequiredService<ISettingsService>();
+        _settings.Changed += OnSettingsChanged;
 
         _logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger<AppDelegate>();
 
@@ -87,10 +83,10 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
     {
         _logger.LogDebug($"Remote notifications token received: {apnsToken}.");
 
-        if (!string.IsNullOrWhiteSpace(_settings?.DeviceId))
+        if (!string.IsNullOrWhiteSpace(_settings.Current.DeviceId))
         {
-            messaging.Subscribe($"{_settings.DeviceId}.call");
-            messaging.Subscribe($"{_settings.DeviceId}.motion");
+            messaging.Subscribe($"{_settings.Current.DeviceId}.call");
+            messaging.Subscribe($"{_settings.Current.DeviceId}.motion");
         }
     }
 
@@ -122,20 +118,18 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
         completionHandler(UNNotificationPresentationOptions.None);
     }
 
-    void OnSettingsChanged(ConnectionSettings settings)
+    void OnSettingsChanged(ConnectionSettings previous, ConnectionSettings current)
     {
-        if (!string.IsNullOrWhiteSpace(_settings?.DeviceId))
+        if (!string.IsNullOrWhiteSpace(previous?.DeviceId))
         {
-            Messaging.SharedInstance.Unsubscribe($"{_settings.DeviceId}.call");
-            Messaging.SharedInstance.Unsubscribe($"{_settings.DeviceId}.motion");
+            Messaging.SharedInstance.Unsubscribe($"{previous.DeviceId}.call");
+            Messaging.SharedInstance.Unsubscribe($"{previous.DeviceId}.motion");
         }
 
-        if (!string.IsNullOrWhiteSpace(settings?.DeviceId))
+        if (!string.IsNullOrWhiteSpace(current?.DeviceId))
         {
-            Messaging.SharedInstance.Subscribe($"{settings.DeviceId}.call");
-            Messaging.SharedInstance.Subscribe($"{settings.DeviceId}.motion");
+            Messaging.SharedInstance.Subscribe($"{current.DeviceId}.call");
+            Messaging.SharedInstance.Subscribe($"{current.DeviceId}.motion");
         }
-
-        _settings = settings;
     }
 }

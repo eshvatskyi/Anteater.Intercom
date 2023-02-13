@@ -5,11 +5,9 @@ using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Events;
 using Anteater.Intercom.Services.ReversChannel;
 using Anteater.Intercom.Services.Settings;
-using Anteater.Intercom.Settings;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Markup;
 using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using SkiaSharp.Views.Maui.Controls.Hosting;
@@ -31,7 +29,6 @@ public static partial class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             })
-            .ConfigureSettings()
             .ConfigureLogging()
             .ConfigureServices()
             .ConfigureViews()
@@ -44,18 +41,11 @@ public static partial class MauiProgram
         return app;
     }
 
-    static MauiAppBuilder ConfigureSettings(this MauiAppBuilder builder)
-    {
-        builder.Configuration.Sources.Clear();
-        builder.Configuration.Add<SettingsConfigurationSource>(_ => { });
-
-        builder.Services.Configure<ConnectionSettings>(builder.Configuration);
-
-        return builder;
-    }
-
     static MauiAppBuilder ConfigureServices(this MauiAppBuilder builder)
     {
+        builder.Services.AddSingleton<ISettingsProvider, SettingsProvider>();
+        builder.Services.AddSingleton<ISettingsService, SettingsService>();
+
         builder.Services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
 
         builder.Services.AddSingleton<IAudioPlayback, AudioPlayback>();
