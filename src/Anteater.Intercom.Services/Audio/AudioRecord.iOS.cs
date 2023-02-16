@@ -45,20 +45,17 @@ public partial class AudioRecord
 
     async Task StartRecordingAsync(CancellationToken stoppingToken)
     {
-        var engine = new AVAudioEngine();
+        using var engine = new AVAudioEngine();
 
-        var inputFormat = engine.InputNode.GetBusOutputFormat(0);
+        using var inputFormat = engine.InputNode.GetBusOutputFormat(0);
 
-        var format = new AVAudioFormat(inputFormat.CommonFormat, inputFormat.SampleRate, 1, false);
+        using var format = new AVAudioFormat(inputFormat.CommonFormat, inputFormat.SampleRate, 1, false);
 
-        var mixer = new AVAudioMixerNode { Volume = 0 };
+        using var mixer = new AVAudioMixerNode { Volume = 0 };
 
         engine.AttachNode(mixer);
-
         engine.Connect(engine.InputNode, mixer, inputFormat);
-
         engine.Connect(mixer, engine.MainMixerNode, format);
-
         engine.Prepare();
 
         mixer.InstallTapOnBus(0, 1024, format, OnDataAvailable);

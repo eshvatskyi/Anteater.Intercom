@@ -69,7 +69,7 @@ public partial class IntercomPage : ContentPageBase
         Resources = new ResourceDictionary
         {
             new Style<ImageButton>(
-                (ImageButton.OpacityProperty, 1),
+                (VisualElement.OpacityProperty, 1),
                 (ImageButton.BorderColorProperty, Colors.Transparent),
                 (ImageButton.BorderWidthProperty, 0),
                 (ImageButton.CornerRadiusProperty, 30),

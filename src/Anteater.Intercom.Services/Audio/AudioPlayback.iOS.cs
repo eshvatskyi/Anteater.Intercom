@@ -43,7 +43,7 @@ public partial class AudioPlayback
     {
         _isRunning = true;
 
-        var audioSession = AVAudioSession.SharedInstance();
+        using var audioSession = AVAudioSession.SharedInstance();
 
         var audioSessionOpts = AVAudioSessionCategoryOptions.DefaultToSpeaker
             | AVAudioSessionCategoryOptions.OverrideMutedMicrophoneInterruption
@@ -51,14 +51,13 @@ public partial class AudioPlayback
             | AVAudioSessionCategoryOptions.AllowBluetoothA2DP;
 
         audioSession.SetCategory(AVAudioSessionCategory.PlayAndRecord, audioSessionOpts);
-        audioSession.SetMode((NSString)"videoChat", out _);
         audioSession.SetActive(true);
 
-        var engine = new AVAudioEngine();
+        using var engine = new AVAudioEngine();
 
         engine.OutputNode.SetVoiceProcessingEnabled(true, out _);
 
-        var player = new AVAudioPlayerNode { Volume = 1 };
+        using var player = new AVAudioPlayerNode { Volume = 1 };
 
         engine.AttachNode(player);
         engine.Connect(player, engine.MainMixerNode, _format);
@@ -67,7 +66,7 @@ public partial class AudioPlayback
 
         player.Play();
 
-        var pcmBuffer = new AVAudioPcmBuffer(_format, (uint)_samplesBuffer.Length / 4);
+        using var pcmBuffer = new AVAudioPcmBuffer(_format, (uint)_samplesBuffer.Length / 4);
 
         ReadSamples(pcmBuffer, player);
 
@@ -80,8 +79,6 @@ public partial class AudioPlayback
         player.Stop();
 
         engine.Stop();
-
-        audioSession.SetActive(false);
 
         _isRunning = false;
     }
