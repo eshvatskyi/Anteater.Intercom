@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Settings;
+using CommunityToolkit.Maui.Behaviors;
 using CommunityToolkit.Maui.Markup;
 using Microsoft.Maui.Layouts;
 
@@ -75,8 +76,16 @@ public class SettingsPage : ContentPageBase
             .Spacing(10)
             .Padding(20, 10)
             .LayoutFlags(AbsoluteLayoutFlags.XProportional | AbsoluteLayoutFlags.SizeProportional)
-            .LayoutBounds(0, 40, 1, 1),
+            .LayoutBounds(0, 40, 1, 1)
+            .Assign(out Layout container),
         };
+
+        var settingEntries = new LinkedList<SettingEntry>(container.Children.OfType<SettingEntry>());
+
+        for (var node = settingEntries.First; node != null; node = node.Next)
+        {
+            SetFocusOnEntryCompletedBehavior.SetNextElement(node.Value, node.Next?.Value ?? settingEntries.First.Value);
+        }
 
         Resources = new ResourceDictionary
         {

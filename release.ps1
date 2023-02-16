@@ -44,7 +44,6 @@ if ($p -like "iOS")
 #    -p:EnableAssemblyILStripping=true `
 
   dotnet publish `
-    ".\src\Anteater.Intercom.Maui" `
     -f:net7.0-ios `
     -c:Release `
     -p:ServerAddress=10.0.1.100 `

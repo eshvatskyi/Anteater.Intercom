@@ -15,8 +15,8 @@
     <ApplicationTitle>Anteater Intercom</ApplicationTitle>
     <ApplicationId>com.anteater.intercom</ApplicationId>
     <ApplicationIdGuid>fea64eb9-8675-4338-8773-1b2d5b06192a</ApplicationIdGuid>
-    <ApplicationDisplayVersion>1.0.10</ApplicationDisplayVersion>
-    <ApplicationVersion>10</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.11</ApplicationDisplayVersion>
+    <ApplicationVersion>11</ApplicationVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) == true">
@@ -46,6 +46,7 @@
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) == true and '$(Configuration)' == 'Release'">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <MtouchLink>Full</MtouchLink>
     <CodesignKey>iPhone Distribution: Eugen Shvatsky (P5UCQD88QT)</CodesignKey>
     <CodesignProvision>com.anteater.intercom iOS Distribution App Store</CodesignProvision>
     <CodesignEntitlements>Platforms\iOS\Entitlements.production.plist</CodesignEntitlements>
