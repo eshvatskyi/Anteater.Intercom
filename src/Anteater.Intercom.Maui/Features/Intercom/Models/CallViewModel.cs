@@ -1,12 +1,12 @@
-using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.ReversChannel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FFmpeg.AutoGen.Abstractions;
 
 namespace Anteater.Intercom.Features.Intercom;
 
-public partial class CallViewModel : ObservableViewModelBase
+public partial class CallViewModel : ObservableObject
 {
     private readonly IAudioRecord _recorder;
     private readonly IReversAudioService _reversAudio;

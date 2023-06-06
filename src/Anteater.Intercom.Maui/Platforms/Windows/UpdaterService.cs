@@ -1,4 +1,3 @@
-using Cronos;
 using Microsoft.Extensions.Hosting;
 using Squirrel;
 

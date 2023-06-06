@@ -53,6 +53,8 @@ public partial class AudioRecord
 
         using var mixer = new AVAudioMixerNode { Volume = 0 };
 
+        engine.InputNode.SetVoiceProcessingEnabled(true, out _);
+
         engine.AttachNode(mixer);
         engine.Connect(engine.InputNode, mixer, inputFormat);
         engine.Connect(mixer, engine.MainMixerNode, format);

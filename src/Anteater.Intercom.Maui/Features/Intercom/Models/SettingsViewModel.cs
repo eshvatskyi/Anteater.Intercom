@@ -1,10 +1,10 @@
-using Anteater.Intercom.Core;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Anteater.Intercom.Features.Intercom;
 
-public partial class SettingsViewModel : ObservableViewModelBase
+public partial class SettingsViewModel : ObservableObject
 {
     private readonly IMessenger _messenger;
 

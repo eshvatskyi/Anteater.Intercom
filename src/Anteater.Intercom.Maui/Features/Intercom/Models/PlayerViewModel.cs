@@ -1,13 +1,13 @@
-using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Audio;
 using Anteater.Intercom.Services.Rtsp;
 using Anteater.Intercom.Services.Settings;
+using CommunityToolkit.Mvvm.ComponentModel;
 using SkiaSharp;
 using SkiaSharp.Views.Maui.Controls;
 
 namespace Anteater.Intercom.Features.Intercom;
 
-public partial class PlayerViewModel : ObservableViewModelBase
+public partial class PlayerViewModel : ObservableObject
 {
     private RtspStreamContext _rtspStream;
     private readonly IAudioPlayback _playback;

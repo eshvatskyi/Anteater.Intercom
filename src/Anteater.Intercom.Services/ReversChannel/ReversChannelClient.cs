@@ -8,6 +8,8 @@ namespace Anteater.Intercom.Services.ReversChannel;
 
 public class ReversChannelClient
 {
+    private const int DISCONNECT_TIMEOUT = 30;
+
     private readonly ConnectionSettings _settings;
 
     private TcpClient _client;
@@ -23,10 +25,14 @@ public class ReversChannelClient
         _settings = settings;
     }
 
+    public event EventHandler Disconnected;
+
     public async Task OpenAsync()
     {
         try
         {
+            _ = StartDisconnectTimeout();
+
             _client = new TcpClient();
             _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
@@ -73,6 +79,16 @@ public class ReversChannelClient
         }
     }
 
+    async Task StartDisconnectTimeout()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(DISCONNECT_TIMEOUT));
+
+        if (_client is not null)
+        {
+            Disconnect();
+        }
+    }
+
     public async Task SendAsync(AVSampleFormat format, int sampleRate, int channels, byte[] data)
     {
         if (_client is null)
@@ -114,7 +130,7 @@ public class ReversChannelClient
 
     public void Disconnect()
     {
-        _client?.Dispose();
+        _client?.Close();
         _writer?.Dispose();
         _audioPacketFactory?.Dispose();
 
@@ -123,6 +139,8 @@ public class ReversChannelClient
         _audioPacketFactory = null;
         _buffer = null;
         _encoder = null;
+
+        Disconnected?.Invoke(this, new());
     }
 
     static AudioEncoder GetEncoder(TalkInfoHeader info, AVSampleFormat format, int sampleRate, int channels)

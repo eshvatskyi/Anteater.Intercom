@@ -1,4 +1,3 @@
-using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Events;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -7,7 +6,7 @@ using NAudio.Wave.SampleProviders;
 
 namespace Anteater.Intercom.Features.Intercom;
 
-public partial class SettingsViewModel : ObservableViewModelBase, IRecipient<AlarmEvent>
+public partial class SettingsViewModel: IRecipient<AlarmEvent>
 {
     private AudioFileReader _reader;
     private WaveOut _waveOut;

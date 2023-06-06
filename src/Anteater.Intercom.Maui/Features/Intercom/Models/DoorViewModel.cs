@@ -1,10 +1,10 @@
-using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.ReversChannel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Anteater.Intercom.Features.Intercom;
 
-public partial class DoorViewModel : ObservableViewModelBase
+public partial class DoorViewModel : ObservableObject
 {
     private readonly IDoorLockService _doorLock;
 
