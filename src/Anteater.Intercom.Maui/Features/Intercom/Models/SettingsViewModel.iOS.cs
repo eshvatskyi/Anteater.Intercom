@@ -1,9 +1,8 @@
-using Anteater.Intercom.Core;
 using CommunityToolkit.Mvvm.Input;
 
 namespace Anteater.Intercom.Features.Intercom;
 
-public partial class SettingsViewModel : ObservableViewModelBase
+public partial class SettingsViewModel
 {
     partial void Init()
     {

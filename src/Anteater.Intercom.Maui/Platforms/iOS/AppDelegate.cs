@@ -1,5 +1,3 @@
-using System.Text.Json;
-using Anteater.Intercom.Services.Events;
 using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
 using Firebase.CloudMessaging;
@@ -90,33 +88,33 @@ public class AppDelegate : MauiUIApplicationDelegate, IUNUserNotificationCenterD
         }
     }
 
-    [Export("application:didReceiveRemoteNotification:fetchCompletionHandler:")]
-    public void RemoteNotificationsNotificationResponseReceived(UIApplication application, NSDictionary userInfo, Action<UIBackgroundFetchResult> completionHandler)
-    {
-        _logger.LogDebug($"Remote notification tapped: {NSJsonSerialization.Serialize(userInfo, 0, out _)}.");
+    //[Export("application:didReceiveRemoteNotification:fetchCompletionHandler:")]
+    //public void RemoteNotificationsNotificationResponseReceived(UIApplication application, NSDictionary userInfo, Action<UIBackgroundFetchResult> completionHandler)
+    //{
+    //    _logger.LogDebug($"Remote notification tapped: {NSJsonSerialization.Serialize(userInfo, 0, out _)}.");
 
-        if (userInfo?.TryGetValue((NSString)"event", out var eventData) ?? false)
-        {
-            _messenger.Send(JsonSerializer.Deserialize<AlarmEvent>((NSString)eventData));
-        }
+    //    if (userInfo?.TryGetValue((NSString)"event", out var eventData) ?? false)
+    //    {
+    //        _messenger.Send(JsonSerializer.Deserialize<AlarmEvent>((NSString)eventData));
+    //    }
 
-        completionHandler(UIBackgroundFetchResult.NewData);
-    }
+    //    completionHandler(UIBackgroundFetchResult.NewData);
+    //}
 
-    [Export("userNotificationCenter:willPresentNotification:withCompletionHandler:")]
-    public void RemoteNotificationsWillPresentNotification(UNUserNotificationCenter center, UNNotification notification, Action<UNNotificationPresentationOptions> completionHandler)
-    {
-        var userInfo = notification.Request.Content.UserInfo;
+    //[Export("userNotificationCenter:willPresentNotification:withCompletionHandler:")]
+    //public void RemoteNotificationsWillPresentNotification(UNUserNotificationCenter center, UNNotification notification, Action<UNNotificationPresentationOptions> completionHandler)
+    //{
+    //    var userInfo = notification.Request.Content.UserInfo;
 
-        _logger.LogDebug($"Remote notification received in foreground: {NSJsonSerialization.Serialize(userInfo, 0, out _)}.");
+    //    _logger.LogDebug($"Remote notification received in foreground: {NSJsonSerialization.Serialize(userInfo, 0, out _)}.");
 
-        if (userInfo?.TryGetValue((NSString)"event", out var eventData) ?? false)
-        {
-            _messenger.Send(JsonSerializer.Deserialize<AlarmEvent>((NSString)eventData));
-        }
+    //    if (userInfo?.TryGetValue((NSString)"event", out var eventData) ?? false)
+    //    {
+    //        _messenger.Send(JsonSerializer.Deserialize<AlarmEvent>((NSString)eventData));
+    //    }
 
-        completionHandler(UNNotificationPresentationOptions.None);
-    }
+    //    completionHandler(UNNotificationPresentationOptions.None);
+    //}
 
     void OnSettingsChanged(ConnectionSettings previous, ConnectionSettings current)
     {

@@ -5,30 +5,22 @@ using Anteater.Intercom.Services.Settings;
 using CommunityToolkit.Mvvm.Messaging;
 using FFmpeg.AutoGen.Abstractions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Anteater.Intercom.Services.ReversChannel;
 
-public class ReversChannelService : BackgroundService, IReversAudioService, IDoorLockService, IRecipient<AlarmEvent>
+public class ReversChannelService : BackgroundService, IReversAudioService, IDoorLockService
 {
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     private readonly IMessenger _messenger;
     private readonly ISettingsService _settings;
-    private readonly ILogger _logger;
 
     private ReversChannelClient _client;
 
-    private bool _keepConnectionForUnlock = false;
-
-    public ReversChannelService(IMessenger messenger, ISettingsService settings, ILoggerFactory logger)
+    public ReversChannelService(IMessenger messenger, ISettingsService settings)
     {
         _messenger = messenger;
-        _messenger.Register(this);
-
         _settings = settings;
-
-        _logger = logger.CreateLogger<ReversChannelService>();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -50,6 +42,7 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
             }
 
             _client = new ReversChannelClient(_settings.Current);
+            _client.Disconnected += (_, _) => _client = null;
 
             await _client.OpenAsync();
         }
@@ -77,8 +70,6 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
                 _semaphore.Wait();
             }
 
-            _keepConnectionForUnlock = false;
-
             _client?.Disconnect();
             _client = null;
         }
@@ -99,8 +90,6 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
 
             if (_client is null)
             {
-                _keepConnectionForUnlock = false;
-
                 await OpenAsync(true);
             }
         }
@@ -145,9 +134,11 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
         {
             await _semaphore.WaitAsync();
 
-            if (_client is not null && !_keepConnectionForUnlock)
+            // we want to open connection to support opening door 1 without no issues
+            // we wont close connection if door was opened
+            if (_client is null)
             {
-                Disconnect(true);
+                await OpenAsync(true);
             }
         }
         finally
@@ -178,22 +169,6 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
             return (false, "Device is not healthy.");
         }
 
-        await tcs.Task;
-
-        try
-        {
-            await _semaphore.WaitAsync();
-
-            if (!_keepConnectionForUnlock)
-            {
-                await OpenAsync(true);
-            }
-        }
-        finally
-        {
-            _semaphore.Release();
-        }
-
         return (true, "");
     }
 
@@ -216,25 +191,5 @@ public class ReversChannelService : BackgroundService, IReversAudioService, IDoo
         var content = response.Content != null ? await response.Content.ReadAsStringAsync() : "";
 
         return (response.IsSuccessStatusCode, content);
-    }
-
-    void IRecipient<AlarmEvent>.Receive(AlarmEvent message)
-    {
-        if (message.Status && message.Type == AlarmEvent.EventType.SensorAlarm && message.Numbers is [1, ..])
-        {
-            var timeout = TimeSpan.FromSeconds(30) - TimeSpan.FromTicks(DateTime.UtcNow.Ticks - message.Timestamp);
-
-            _logger.LogDebug($"AlarmEvent.Received: With timeout, {timeout.TotalSeconds} secs");
-
-            if (timeout.TotalSeconds > 0)
-            {
-                _keepConnectionForUnlock = true;
-
-                if (_client is null)
-                {
-                    _ = OpenAsync(false);
-                }
-            }
-        }
     }
 }

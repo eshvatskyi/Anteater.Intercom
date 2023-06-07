@@ -1,12 +1,12 @@
 using System.ComponentModel;
-using Anteater.Intercom.Core;
 using Anteater.Intercom.Services.Events;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 
 namespace Anteater.Intercom.Features.Intercom;
 
-public partial class IntercomViewModel : ObservableViewModelBase, IRecipient<AlarmEvent>
+public partial class IntercomViewModel : ObservableObject, IRecipient<AlarmEvent>
 {
     private bool _isSettingsEnaled;
     private bool _isOverlayVisible;
