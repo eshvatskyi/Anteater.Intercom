@@ -1,8 +1,10 @@
 <Project>
 
-  <PropertyGroup>    
-    <LangVersion>preview</LangVersion>
+  <PropertyGroup>
     <RepositoryRootDirectory>$(MSBuildThisFileDirectory)</RepositoryRootDirectory>
+
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>true</ImplicitUsings>
   </PropertyGroup>
 
   <PropertyGroup>
