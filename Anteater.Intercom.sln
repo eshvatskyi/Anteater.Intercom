@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31808.319
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Anteater.Intercom.Maui", "src\Anteater.Intercom.Maui\Anteater.Intercom.Maui.csproj", "{A730745C-8920-4AB6-AC68-D0EF5C08F7FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Maui", "src\App\App.csproj", "{A730745C-8920-4AB6-AC68-D0EF5C08F7FE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Anteater.Intercom.Services", "src\Anteater.Intercom.Services\Anteater.Intercom.Services.csproj", "{48D70ADA-6DC8-434E-A9E3-A8E262AB45C2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core", "src\Core\Core.csproj", "{48D70ADA-6DC8-434E-A9E3-A8E262AB45C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotificationServiceExtension", "src\NotificationServiceExtension\NotificationServiceExtension.csproj", "{1E9708F9-6E91-4A81-BDD6-8A02FB31EA7D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,6 +25,10 @@ Global
 		{48D70ADA-6DC8-434E-A9E3-A8E262AB45C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{48D70ADA-6DC8-434E-A9E3-A8E262AB45C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{48D70ADA-6DC8-434E-A9E3-A8E262AB45C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E9708F9-6E91-4A81-BDD6-8A02FB31EA7D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E9708F9-6E91-4A81-BDD6-8A02FB31EA7D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E9708F9-6E91-4A81-BDD6-8A02FB31EA7D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E9708F9-6E91-4A81-BDD6-8A02FB31EA7D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

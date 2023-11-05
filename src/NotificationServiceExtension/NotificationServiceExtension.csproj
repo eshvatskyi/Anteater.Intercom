@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-ios</TargetFrameworks>
+    <OutputType>Library</OutputType>
+
+    <RootNamespace>Anteater.Intercom</RootNamespace>
+
+    <IsAppExtension>true</IsAppExtension>
+    <IsWatchExtension>false</IsWatchExtension>
+
+    <ApplicationTitle>Anteater Intercom Extension</ApplicationTitle>
+    <ApplicationId>com.anteater.intercom.nse</ApplicationId>
+    
+    <ApplicationDisplayVersion>1.0.21</ApplicationDisplayVersion>
+    <ApplicationVersion>21</ApplicationVersion>
+
+    <SupportedOSPlatformVersion>16.4</SupportedOSPlatformVersion>
+    <ProvisioningType>manual</ProvisioningType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <!--<RuntimeIdentifier>iossimulator-x64</RuntimeIdentifier>-->
+    <CodesignKey>Apple Development: Eugen Shvatsky (2ZA34AY2CR)</CodesignKey>
+    <CodesignProvision>com.anteater.intercom.nse iOS Development</CodesignProvision>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <CodesignKey>iPhone Distribution: Eugen Shvatsky (P5UCQD88QT)</CodesignKey>
+    <CodesignProvision>com.anteater.intercom.nse iOS Distribution</CodesignProvision>
+  </PropertyGroup>
+
+</Project>
